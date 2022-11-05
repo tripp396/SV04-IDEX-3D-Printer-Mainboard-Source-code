@@ -27,6 +27,7 @@
 #include "../gcode.h"
 #include "../../lcd/marlinui.h"
 #include "../../sd/cardreader.h"
+#include "../../module/printcounter.h"
 
 #if ENABLED(DWIN_CREALITY_LCD_ENHANCED)
   #include "../../lcd/e3v2/enhanced/dwin.h"
@@ -60,6 +61,10 @@ void GcodeSuite::M73() {
 
       rtscheck.RTS_SndData(remaining_percent, PRINT_PROCESS_VP);
       rtscheck.RTS_SndData(remaining_percent, PRINT_PROCESS_ICON_VP);
+
+      duration_t elapsed = print_job_timer.duration();
+      rtscheck.RTS_SndData(elapsed.value / 3600, PRINT_TIME_HOUR_VP);
+      rtscheck.RTS_SndData((elapsed.value % 3600) / 60, PRINT_TIME_MIN_VP);
     }
 
     #if ENABLED(USE_M73_REMAINING_TIME)

@@ -91,6 +91,7 @@
 //
 #ifndef FIL_RUNOUT_PIN
   #define FIL_RUNOUT_PIN                  PA6   // "Pulled-high"
+  #define FIL_RUNOUT2_PIN                 PA5   // "Pulled-high"
 #endif
 
 #define CHECKFILEMENT0_PIN                PE5
