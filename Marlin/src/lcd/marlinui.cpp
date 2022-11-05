@@ -81,7 +81,7 @@ constexpr uint8_t epps = ENCODER_PULSES_PER_STEP;
 #if ENABLED(LCD_SET_PROGRESS_MANUALLY)
   MarlinUI::progress_t MarlinUI::progress_override; // = 0
   #if ENABLED(USE_M73_REMAINING_TIME)
-    uint32_t MarlinUI::remaining_time;
+    //uint32_t MarlinUI::remaining_time;
   #endif
 #endif
 

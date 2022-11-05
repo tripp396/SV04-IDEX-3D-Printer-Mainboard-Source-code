@@ -899,13 +899,18 @@ void RTSSHOW::RTS_HandleData()
     case StopPrintKey:
       if((recdat.data[0] == 1) || (recdat.data[0] == 0xF1))
       {
-        RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
-        RTS_SndData(0, PRINT_TIME_HOUR_VP);
-        RTS_SndData(0, PRINT_TIME_MIN_VP);
-        RTS_SndData(0, PRINT_SURPLUS_TIME_HOUR_VP);
-        RTS_SndData(0, PRINT_SURPLUS_TIME_MIN_VP);
+        if (card.isPrinting) {
+          RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
+          RTS_SndData(0, PRINT_TIME_HOUR_VP);
+          RTS_SndData(0, PRINT_TIME_MIN_VP);
+          RTS_SndData(0, PRINT_SURPLUS_TIME_HOUR_VP);
+          RTS_SndData(0, PRINT_SURPLUS_TIME_MIN_VP);
+          RTS_SDcard_Stop();
+        } else {
+          queue.enqueue_now_P(PSTR("M77"));
+        }
+        
         Update_Time_Value = 0;
-        RTS_SDcard_Stop();
         PrintFlag = 0;
       }
       else if(recdat.data[0] == 0xF0)
@@ -920,7 +925,11 @@ void RTSSHOW::RTS_HandleData()
         }
         else
         {
-          RTS_SndData(ExchangePageBase + 10, ExchangepageAddr);
+          if (print_job_timer.isRunning) {
+            RTS_SndData(ExchangePageBase + 11, ExchangepageAddr);
+          } else {
+            RTS_SndData(ExchangePageBase + 12, ExchangepageAddr);
+          }
         }
       }
       break;
@@ -935,19 +944,25 @@ void RTSSHOW::RTS_HandleData()
         RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
         // reject to receive cmd
         waitway = 1;
-        pause_z = current_position[Z_AXIS];
-        card.pauseSDPrint();
-        pause_action_flag = true;
-        Update_Time_Value = 0;
-        sdcard_pause_check = false;
-        PrintFlag = 1;
-        change_page_number = 12;
+        if (card.isPrinting) {
+          pause_z = current_position[Z_AXIS];
+          card.pauseSDPrint();
+        } else {
+          //pause command
+          pause_action_flag = true;
+          Update_Time_Value = 0;
+          sdcard_pause_check = false;
+          PrintFlag = 1;
+          change_page_number = 12;
+          queue.enqueue_now_P(PSTR("M76"));
+        }
       }
       break;
 
     case ResumePrintKey:
       if(recdat.data[0] == 1)
       {
+        //resume from paused
         #if ENABLED(CHECKFILEMENT)
           if((0 == save_dual_x_carriage_mode) && (0 == READ(CHECKFILEMENT0_PIN)))
           {
@@ -963,18 +978,21 @@ void RTSSHOW::RTS_HandleData()
           }
         #endif
         RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
-
-        card.startOrResumeFilePrinting();
-        print_job_timer.start();
+        if (card.isPrinting) {
+          card.startOrResumeFilePrinting();
+          print_job_timer.start();
+        }
 
         Update_Time_Value = 0;
         sdcard_pause_check = true;
         pause_action_flag = false;
         RTS_SndData(ExchangePageBase + 11, ExchangepageAddr);
         PrintFlag = 2;
+        queue.enqueue_now_P(PSTR("M75"));
       }
       else if(recdat.data[0] == 2)
       {
+        //change filament and resume
         #if ENABLED(CHECKFILEMENT)
           if((0 == save_dual_x_carriage_mode) && (0 == READ(CHECKFILEMENT0_PIN)))
           {
@@ -992,19 +1010,23 @@ void RTSSHOW::RTS_HandleData()
           {
             RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
 
-            card.startOrResumeFilePrinting();
-            print_job_timer.start();
+            if (card.isPrinting) {
+              card.startOrResumeFilePrinting();
+              print_job_timer.start();
+            }
 
             Update_Time_Value = 0;
             pause_action_flag = false;
             sdcard_pause_check = true;
             RTS_SndData(ExchangePageBase + 11, ExchangepageAddr);
             PrintFlag = 2;
+            queue.enqueue_now_P(PSTR("M75"));
           }
         #endif
       }
       else if(recdat.data[0] == 3)
       {
+        //heat and change filament, and resume
         if(PoweroffContinue == true)
         {
           #if ENABLED(CHECKFILEMENT)
@@ -1085,6 +1107,7 @@ void RTSSHOW::RTS_HandleData()
       }
       else if(recdat.data[0] == 4)
       {
+        //replaced SD card and continue
         if(!CardReader::flag.mounted)
         {
           CardUpdate = true;
@@ -1109,23 +1132,29 @@ void RTSSHOW::RTS_HandleData()
           #endif
           RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
 
-          card.startOrResumeFilePrinting();
-          print_job_timer.start();
+          if (card.isPrinting) {
+            card.startOrResumeFilePrinting();
+            print_job_timer.start();
+          }
 
           Update_Time_Value = 0;
           sdcard_pause_check = true;
           pause_action_flag = false;
           PrintFlag = 2;
 
-          for(uint16_t i = 0;i < CardRecbuf.Filesum;i ++) 
-          {
-            if(!strcmp(CardRecbuf.Cardfilename[i], &recovery.info.sd_filename[1]))
+          if (card.isPrinting) {
+            for(uint16_t i = 0;i < CardRecbuf.Filesum;i ++) 
             {
-              rtscheck.RTS_SndData(CardRecbuf.Cardshowfilename[i], PRINT_FILE_TEXT_VP);
+              if(!strcmp(CardRecbuf.Cardfilename[i], &recovery.info.sd_filename[1]))
+              {
+                rtscheck.RTS_SndData(CardRecbuf.Cardshowfilename[i], PRINT_FILE_TEXT_VP);
+              }
             }
           }
+
           sd_printing_autopause = true;
           RTS_SndData(ExchangePageBase + 11, ExchangepageAddr);
+          queue.enqueue_now_P(PSTR("M75"));
         }
       }
       break;
