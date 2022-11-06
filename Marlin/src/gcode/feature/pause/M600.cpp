@@ -45,6 +45,7 @@
 #if HAS_FILAMENT_SENSOR
   #include "../../../feature/runout.h"
 #endif
+
 #if ENABLED(RTS_AVAILABLE)
   #include "../../../lcd/e3v2/creality/LCD_RTS.h"
 #endif
@@ -64,7 +65,6 @@
  *  Default values are used for omitted arguments.
  */
 void GcodeSuite::M600() {
-SERIAL_ECHOLNPGM("helwr");
   #if ENABLED(MIXING_EXTRUDER)
     const int8_t target_e_stepper = get_target_e_stepper_from_command();
     if (target_e_stepper < 0) return;
@@ -77,8 +77,8 @@ SERIAL_ECHOLNPGM("helwr");
 
     const int8_t target_extruder = active_extruder;
   #else
-  SERIAL_ECHOLNPGM("hello wr");
     const int8_t target_extruder = get_target_extruder_from_command();
+    SERIAL_ECHOLNPGM("MSG: Target extruder:",target_extruder);
     
     if (target_extruder < 0) return;
   #endif
@@ -90,6 +90,7 @@ SERIAL_ECHOLNPGM("helwr");
       #if MULTI_FILAMENT_SENSOR
         if (idex_is_duplicating())
           DXC_ext = (READ(FIL_RUNOUT2_PIN) == FIL_RUNOUT2_STATE) ? 1 : 0;
+          SERIAL_ECHOLNPGM("MSG: DXC_ext:",DXC_ext);
       #else
         DXC_ext = active_extruder;
       #endif
@@ -101,8 +102,6 @@ SERIAL_ECHOLNPGM("helwr");
     ui.pause_show_message(PAUSE_MESSAGE_CHANGING, PAUSE_MODE_PAUSE_PRINT, target_extruder);
   #endif
  
-  rtscheck.RTS_SndData(ExchangePageBase + 6, ExchangepageAddr);
- 
   #if ENABLED(HOME_BEFORE_FILAMENT_CHANGE)
     // If needed, home before parking for filament change
     home_if_needed(true);
@@ -111,8 +110,10 @@ SERIAL_ECHOLNPGM("helwr");
   #if HAS_MULTI_EXTRUDER
     // Change toolhead if specified
     const uint8_t active_extruder_before_filament_change = active_extruder;
+    SERIAL_ECHOLNPGM("MSG: Extruder before change:",active_extruder_before_filament_change);
     if (active_extruder != target_extruder && TERN1(DUAL_X_CARRIAGE, !idex_is_duplicating()))
       tool_change(target_extruder, false);
+      SERIAL_ECHOLNPGM("MSG: tool_change:",target_extruder);
   #endif
 
   // Initial retract before move to filament change position
@@ -123,6 +124,8 @@ SERIAL_ECHOLNPGM("helwr");
   // Lift Z axis
   if (parser.seenval('Z')) park_point.z = parser.linearval('Z');
 
+  SERIAL_ECHOLNPGM("MSG: Start move to change pos, X park point:",park_point.x);
+  
   // Move XY axes to filament change position or given position
   if (parser.seenval('X')) park_point.x = parser.linearval('X');
   if (parser.seenval('Y')) park_point.y = parser.linearval('Y');

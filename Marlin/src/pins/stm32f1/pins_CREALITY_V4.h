@@ -90,12 +90,12 @@
 // Filament Runout Sensor
 //
 #ifndef FIL_RUNOUT_PIN
-  #define FIL_RUNOUT_PIN                  PA6   // "Pulled-high"
-  #define FIL_RUNOUT2_PIN                 PA5   // "Pulled-high"
+  #define FIL_RUNOUT_PIN                  PE5
+  #define FIL_RUNOUT2_PIN                 PE6
 #endif
 
-#define CHECKFILEMENT0_PIN                PE5
-#define CHECKFILEMENT1_PIN                PE6
+//#define CHECKFILEMENT0_PIN                PE5
+//#define CHECKFILEMENT1_PIN                PE6
 
 //
 // Steppers

@@ -287,6 +287,7 @@ const unsigned long Addrbuf[] =
   0
 };
 
+extern void SetExtruderMode(unsigned int);
 extern void RTSUpdate();
 extern void RTSInit();
 
