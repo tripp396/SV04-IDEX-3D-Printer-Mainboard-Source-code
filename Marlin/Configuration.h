@@ -73,8 +73,8 @@
 #define CUSTOM_VERSION_FILE Version.h // Path from the root directory (no quotes)
 #define MACVERSION      STRING_CONFIG_H_AUTHOR
 #define SOFTVERSION     SHORT_BUILD_VERSION
-#define CORP_WEBSITE    "github:bphillips09"
-#define Screen_version  "Screen: V2.1"
+#define CORP_WEBSITE    "bphillips09 on GH"
+#define Screen_version  "Screen: V2.0.B1"
 
 /**
  * *** VENDORS PLEASE READ ***

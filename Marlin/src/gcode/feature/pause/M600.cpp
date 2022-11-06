@@ -78,7 +78,6 @@ void GcodeSuite::M600() {
     const int8_t target_extruder = active_extruder;
   #else
     const int8_t target_extruder = get_target_extruder_from_command();
-    SERIAL_ECHOLNPGM("MSG: Target extruder:",target_extruder);
     
     if (target_extruder < 0) return;
   #endif
@@ -90,7 +89,6 @@ void GcodeSuite::M600() {
       #if MULTI_FILAMENT_SENSOR
         if (idex_is_duplicating())
           DXC_ext = (READ(FIL_RUNOUT2_PIN) == FIL_RUNOUT2_STATE) ? 1 : 0;
-          SERIAL_ECHOLNPGM("MSG: DXC_ext:",DXC_ext);
       #else
         DXC_ext = active_extruder;
       #endif
@@ -110,7 +108,6 @@ void GcodeSuite::M600() {
   #if HAS_MULTI_EXTRUDER
     // Change toolhead if specified
     const uint8_t active_extruder_before_filament_change = active_extruder;
-    SERIAL_ECHOLNPGM("MSG: Extruder before change:",active_extruder_before_filament_change);
     if (active_extruder != target_extruder && TERN1(DUAL_X_CARRIAGE, !idex_is_duplicating()))
       tool_change(target_extruder, false);
       SERIAL_ECHOLNPGM("MSG: tool_change:",target_extruder);
@@ -124,8 +121,6 @@ void GcodeSuite::M600() {
   // Lift Z axis
   if (parser.seenval('Z')) park_point.z = parser.linearval('Z');
 
-  SERIAL_ECHOLNPGM("MSG: Start move to change pos, X park point:",park_point.x);
-  
   // Move XY axes to filament change position or given position
   if (parser.seenval('X')) park_point.x = parser.linearval('X');
   if (parser.seenval('Y')) park_point.y = parser.linearval('Y');

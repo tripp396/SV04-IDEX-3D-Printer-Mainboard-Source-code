@@ -38,7 +38,7 @@
 
 #if ENABLED(RTS_AVAILABLE)
 
-#define CHECKFILEMENT true
+//#define CHECKFILEMENT true
 
 float zprobe_zoffset;
 float last_zoffset = 0.0;
@@ -963,6 +963,9 @@ void RTSSHOW::RTS_HandleData()
 
     case ResumePrintKey:
       queue.enqueue_one_P(PSTR("M117 Resuming..."));
+      #if BOTH(M600_PURGE_MORE_RESUMABLE, ADVANCED_PAUSE_FEATURE)
+        pause_menu_response = PAUSE_RESPONSE_RESUME_PRINT;  // Simulate menu selection
+      #endif
       wait_for_user = false;
       if(recdat.data[0] == 1)
       {
@@ -1006,9 +1009,7 @@ void RTSSHOW::RTS_HandleData()
           else if((4 != save_dual_x_carriage_mode) && (0 != save_dual_x_carriage_mode) && ((0 == READ(FIL_RUNOUT_PIN)) || (0 == READ(FIL_RUNOUT2_PIN))))
           {
             rtscheck.RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          }
-          else
-          {
+          } else {
             RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
 
             card.startOrResumeFilePrinting();
@@ -1019,16 +1020,17 @@ void RTSSHOW::RTS_HandleData()
             PrintFlag = 2;
             queue.enqueue_one_P(PSTR("M75"));
             TERN_(HOST_PAUSE_M76, host_action_resume());
-            #if BOTH(M600_PURGE_MORE_RESUMABLE, ADVANCED_PAUSE_FEATURE)
-              pause_menu_response = PAUSE_RESPONSE_RESUME_PRINT;  // Simulate menu selection
-            #endif
-            #if HAS_FILAMENT_SENSOR
-              if (runout.filament_ran_out) {                      // Disable a triggered sensor
-                runout.enabled = false;
-                runout.reset();
-              }
-            #endif
           }
+        #else
+          RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
+          //card.startOrResumeFilePrinting();
+          Update_Time_Value = 0;
+          pause_action_flag = false;
+          sdcard_pause_check = true;
+          PrintFlag = 2;
+          RTS_SndData(ExchangePageBase + 11, ExchangepageAddr);
+          queue.enqueue_one_P(PSTR("M75"));
+          TERN_(HOST_PAUSE_M76, host_action_resume());
         #endif
       }
       else if(recdat.data[0] == 3)
