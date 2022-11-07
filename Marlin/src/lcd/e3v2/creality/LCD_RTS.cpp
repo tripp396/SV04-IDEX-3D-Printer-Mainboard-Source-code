@@ -1488,6 +1488,12 @@ void RTSSHOW::RTS_HandleData()
         sprintf_P(commandbuf, PSTR("M218 T1 Z%4.1f"), hotend_offset[1].z);
         queue.enqueue_now_P(commandbuf);
         //settings.save();
+      } else if (recdat.data[0] == 4) {
+          #if ENABLED(HAS_LEVELING)
+            RTS_SndData(ExchangePageBase + 28, ExchangepageAddr);
+          #else
+            RTS_SndData(ExchangePageBase + 21, ExchangepageAddr);
+          #endif
       }
       break;
 
@@ -1559,8 +1565,10 @@ void RTSSHOW::RTS_HandleData()
           waitway = 3;
           RTS_SndData(1, AUTO_BED_LEVEL_ICON_VP);
           RTS_SndData(ExchangePageBase + 38, ExchangepageAddr);
+          if (!all_axes_trusted()) {
+            queue.enqueue_now_P(PSTR("G28"));
+          }
           queue.enqueue_now_P(PSTR("G29"));
-           
         #endif
       }
       if (recdat.data[0] == 6)
@@ -1631,6 +1639,10 @@ void RTSSHOW::RTS_HandleData()
         queue.enqueue_now_P(PSTR("G34"));
         Update_Time_Value = 0;
         waitway = 0;
+      } 
+      else if (recdat.data[0] == 12) {
+        RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
+        queue.enqueue_now_P(PSTR("G35"));
       }
       RTS_SndData(0, MOTOR_FREE_ICON_VP);
       break;
@@ -2478,8 +2490,6 @@ void RTSSHOW::RTS_HandleData()
       RTS_SndData(thermalManager.temp_hotend[0].target, HEAD0_SET_TEMP_VP);
       RTS_SndData(thermalManager.temp_hotend[1].target, HEAD1_SET_TEMP_VP);
       RTS_SndData(thermalManager.temp_bed.target, BED_SET_TEMP_VP);
-
-      
       break;
 
     default:

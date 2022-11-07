@@ -74,7 +74,7 @@
 #define MACVERSION      STRING_CONFIG_H_AUTHOR
 #define SOFTVERSION     SHORT_BUILD_VERSION
 #define CORP_WEBSITE    "bphillips09 on GH"
-#define Screen_version  "Screen: V2.0.B1"
+#define Screen_version  "Screen: V2.0.B2"
 
 /**
  * *** VENDORS PLEASE READ ***

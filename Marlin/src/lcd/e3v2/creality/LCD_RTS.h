@@ -86,6 +86,11 @@ extern int power_off_type_yes;
 // #define AUTO_BED_LEVEL_15POINT_VP          0x111C
 // #define AUTO_BED_LEVEL_16POINT_VP          0x111E
 
+#define AUTO_TRAM_1TEXT_VP                 0x1120
+//#define AUTO_TRAM_2TEXT_VP                 0x1138
+//#define AUTO_TRAM_3TEXT_VP                 0x1150
+//#define AUTO_TRAM_4TEXT_VP                 0x1168
+
 #define PRINT_SURPLUS_TIME_HOUR_VP         0x1162
 #define PRINT_SURPLUS_TIME_MIN_VP          0x1164
 #define SELECT_MODE_ICON_VP                0x1166
