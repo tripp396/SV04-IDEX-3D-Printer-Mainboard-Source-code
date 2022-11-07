@@ -290,10 +290,17 @@ void RTSSHOW::RTS_SDCardUpate(void)
 
 void RTSSHOW::RTS_Init()
 {
+  SERIAL_ECHOLNPGM("RTS Init");
   AxisUnitMode = 1;
   active_extruder = active_extruder_font;
   #if ENABLED(DUAL_X_CARRIAGE)
-    save_dual_x_carriage_mode = dualXPrintingModeStatus;
+    if (dualXPrintingModeStatus == 4) {
+      save_dual_x_carriage_mode = 5;
+    } else if (dualXPrintingModeStatus == 0) {
+      save_dual_x_carriage_mode = 4;
+    } else {
+      save_dual_x_carriage_mode = dualXPrintingModeStatus;
+    }
     if(save_dual_x_carriage_mode == 1)
     {
       RTS_SndData(1, PRINT_MODE_ICON_VP);
@@ -803,57 +810,14 @@ void RTSSHOW::RTS_HandleData()
       else if(recdat.data[0] == 5)
       {
         #if ENABLED(DUAL_X_CARRIAGE)
-          save_dual_x_carriage_mode = dualXPrintingModeStatus;
-          if(save_dual_x_carriage_mode == 1)
-          {
-            RTS_SndData(1, TWO_COLOR_MODE_ICON_VP);
-            RTS_SndData(0, COPY_MODE_ICON_VP);
-            RTS_SndData(0, MIRROR_MODE_ICON_VP);
-            RTS_SndData(0, SINGLE_MODE_ICON_VP);
-
-            RTS_SndData(1, PRINT_MODE_ICON_VP);
-            RTS_SndData(1, SELECT_MODE_ICON_VP);
+          if (dualXPrintingModeStatus == 4) {
+            save_dual_x_carriage_mode = 5;
+          } else if (dualXPrintingModeStatus == 0) {
+            save_dual_x_carriage_mode = 4;
+          } else {
+            save_dual_x_carriage_mode = dualXPrintingModeStatus;
           }
-          else if(save_dual_x_carriage_mode == 2)
-          {
-            RTS_SndData(0, TWO_COLOR_MODE_ICON_VP);
-            RTS_SndData(1, COPY_MODE_ICON_VP);
-            RTS_SndData(0, MIRROR_MODE_ICON_VP);
-            RTS_SndData(0, SINGLE_MODE_ICON_VP);
-
-            RTS_SndData(2, PRINT_MODE_ICON_VP);
-            RTS_SndData(2, SELECT_MODE_ICON_VP);
-          }
-          else if(save_dual_x_carriage_mode == 3)
-          {
-            RTS_SndData(0, TWO_COLOR_MODE_ICON_VP);
-            RTS_SndData(0, COPY_MODE_ICON_VP);
-            RTS_SndData(1, MIRROR_MODE_ICON_VP);
-            RTS_SndData(0, SINGLE_MODE_ICON_VP);
-
-            RTS_SndData(3, PRINT_MODE_ICON_VP);
-            RTS_SndData(3, SELECT_MODE_ICON_VP);
-          }
-          else if(save_dual_x_carriage_mode == 4)
-          {
-            RTS_SndData(0, TWO_COLOR_MODE_ICON_VP);
-            RTS_SndData(0, COPY_MODE_ICON_VP);
-            RTS_SndData(0, MIRROR_MODE_ICON_VP);
-            RTS_SndData(2, SINGLE_MODE_ICON_VP);
-
-            RTS_SndData(5, PRINT_MODE_ICON_VP);
-            RTS_SndData(5, SELECT_MODE_ICON_VP);
-          }
-          else
-          {
-            RTS_SndData(0, TWO_COLOR_MODE_ICON_VP);
-            RTS_SndData(0, COPY_MODE_ICON_VP);
-            RTS_SndData(0, MIRROR_MODE_ICON_VP);
-            RTS_SndData(1, SINGLE_MODE_ICON_VP);
-
-            RTS_SndData(4, PRINT_MODE_ICON_VP);
-            RTS_SndData(4, SELECT_MODE_ICON_VP);
-          }
+          SetExtruderMode(save_dual_x_carriage_mode);
 
           RTS_SndData(ExchangePageBase + 34, ExchangepageAddr);
         #endif
@@ -970,20 +934,6 @@ void RTSSHOW::RTS_HandleData()
       if(recdat.data[0] == 1)
       {
         //resume from paused
-        #if ENABLED(CHECKFILEMENT)
-          if((0 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT_PIN)))
-          {
-            RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          }
-          else if((4 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT2_PIN)))
-          {
-            RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          }
-          else if((4 != save_dual_x_carriage_mode) && (0 != save_dual_x_carriage_mode) && ((0 == READ(FIL_RUNOUT_PIN)) || (0 == READ(FIL_RUNOUT2_PIN))))
-          {
-            rtscheck.RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          }
-        #endif
         RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
         card.startOrResumeFilePrinting();
         Update_Time_Value = 0;
@@ -997,95 +947,25 @@ void RTSSHOW::RTS_HandleData()
       else if(recdat.data[0] == 2)
       {
         //change filament and resume
-        #if ENABLED(CHECKFILEMENT)
-          if((0 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT_PIN)))
-          {
-            RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          }
-          else if((4 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT2_PIN)))
-          {
-            RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          }
-          else if((4 != save_dual_x_carriage_mode) && (0 != save_dual_x_carriage_mode) && ((0 == READ(FIL_RUNOUT_PIN)) || (0 == READ(FIL_RUNOUT2_PIN))))
-          {
-            rtscheck.RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          } else {
-            RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
-
-            card.startOrResumeFilePrinting();
-            Update_Time_Value = 0;
-            pause_action_flag = false;
-            sdcard_pause_check = true;
-            RTS_SndData(ExchangePageBase + 11, ExchangepageAddr);
-            PrintFlag = 2;
-            queue.enqueue_one_P(PSTR("M75"));
-            TERN_(HOST_PAUSE_M76, host_action_resume());
-          }
-        #else
-          RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
-          //card.startOrResumeFilePrinting();
-          Update_Time_Value = 0;
-          pause_action_flag = false;
-          sdcard_pause_check = true;
-          PrintFlag = 2;
-          RTS_SndData(ExchangePageBase + 11, ExchangepageAddr);
-          queue.enqueue_one_P(PSTR("M75"));
-          TERN_(HOST_PAUSE_M76, host_action_resume());
-        #endif
+        RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
+        //card.startOrResumeFilePrinting();
+        Update_Time_Value = 0;
+        pause_action_flag = false;
+        sdcard_pause_check = true;
+        PrintFlag = 2;
+        RTS_SndData(ExchangePageBase + 11, ExchangepageAddr);
+        queue.enqueue_one_P(PSTR("M75"));
+        TERN_(HOST_PAUSE_M76, host_action_resume());
       }
       else if(recdat.data[0] == 3)
       {
         //heat and change filament, and resume
         if(PoweroffContinue == true)
         {
-          #if ENABLED(CHECKFILEMENT)
-            if((0 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT_PIN)))
-            {
-              RTS_SndData(0, CHANGE_FILAMENT_ICON_VP);
-            }
-            else if((0 == save_dual_x_carriage_mode) && (1 == READ(FIL_RUNOUT_PIN)))
-            {
-              RTS_SndData(1, CHANGE_FILAMENT_ICON_VP);
-            }
-            else if((4 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT2_PIN)))
-            {
-              RTS_SndData(0, CHANGE_FILAMENT_ICON_VP);
-            }
-            else if((4 == save_dual_x_carriage_mode) && (1 == READ(FIL_RUNOUT2_PIN)))
-            {
-              RTS_SndData(1, CHANGE_FILAMENT_ICON_VP);
-            }
-            else if((4 != save_dual_x_carriage_mode) &&(0 != save_dual_x_carriage_mode) && ((0 == READ(FIL_RUNOUT_PIN)) || (0 == READ(FIL_RUNOUT2_PIN))))
-            {
-              RTS_SndData(0, CHANGE_FILAMENT_ICON_VP);
-            }
-            else if((4 != save_dual_x_carriage_mode) &&(0 != save_dual_x_carriage_mode) && (1 == READ(FIL_RUNOUT_PIN)) && (1 == READ(FIL_RUNOUT2_PIN)))
-            {
-              RTS_SndData(1, CHANGE_FILAMENT_ICON_VP);
-            }
-          #endif
           RTS_SndData(ExchangePageBase + 8, ExchangepageAddr);
         }
         else if(PoweroffContinue == false)
         {
-          #if ENABLED(CHECKFILEMENT)
-            if((0 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT_PIN)))
-            {
-              RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-              break;
-            }
-            else if((4 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT2_PIN)))
-            {
-              RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-              break;
-            }
-            else if((4 != save_dual_x_carriage_mode) && (0 != save_dual_x_carriage_mode) && ((0 == READ(FIL_RUNOUT_PIN)) || (0 == READ(FIL_RUNOUT2_PIN))))
-            {
-              RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-              break;
-            }
-          #endif
-
           char cmd[30];
           char *c;
           sprintf_P(cmd, PSTR("M23 %s"), CardRecbuf.Cardfilename[FilenamesCount]);
@@ -1125,20 +1005,6 @@ void RTSSHOW::RTS_HandleData()
         }
         else
         {
-          #if ENABLED(CHECKFILEMENT)
-          if((0 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT_PIN)))
-          {
-            RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          }
-          else if((4 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT2_PIN)))
-          {
-            RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          }
-          else if((4 != save_dual_x_carriage_mode) && (0 != save_dual_x_carriage_mode) && ((0 == READ(FIL_RUNOUT_PIN)) || (0 == READ(FIL_RUNOUT2_PIN))))
-          {
-            rtscheck.RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          }
-          #endif
           RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
 
           card.startOrResumeFilePrinting();
@@ -1459,7 +1325,7 @@ void RTSSHOW::RTS_HandleData()
       if (recdat.data[0] == 1)
       {
         Update_Time_Value = RTS_UPDATE_VALUE;
-        //settings.save();
+        SetExtruderMode(save_dual_x_carriage_mode);
         RTS_SndData(ExchangePageBase + 21, ExchangepageAddr);
       }
       else if (recdat.data[0] == 2)
@@ -1500,7 +1366,6 @@ void RTSSHOW::RTS_HandleData()
     case BedLevelFunKey:
       if (recdat.data[0] == 1)
       {
-         
         waitway = 6;
         if((active_extruder == 1) || (!TEST(axis_trusted, X_AXIS)) || (!TEST(axis_trusted, Y_AXIS)))
         {
@@ -1520,10 +1385,10 @@ void RTSSHOW::RTS_HandleData()
       else if (recdat.data[0] == 2)
       {
         last_zoffset = zprobe_zoffset;
-        if (WITHIN((zprobe_zoffset + 0.05), Z_PROBE_OFFSET_RANGE_MIN, Z_PROBE_OFFSET_RANGE_MAX))
+        if (WITHIN((zprobe_zoffset + 0.01), Z_PROBE_OFFSET_RANGE_MIN, Z_PROBE_OFFSET_RANGE_MAX))
         {
           #if ENABLED(HAS_LEVELING)
-            zprobe_zoffset = (zprobe_zoffset + 0.05);
+            zprobe_zoffset = (zprobe_zoffset + 0.01);
             zprobe_zoffset = zprobe_zoffset + 0.00001;
           #endif
           babystep.add_mm(Z_AXIS, zprobe_zoffset - last_zoffset);
@@ -1534,10 +1399,10 @@ void RTSSHOW::RTS_HandleData()
       else if (recdat.data[0] == 3)
       {
         last_zoffset = zprobe_zoffset;
-        if (WITHIN((zprobe_zoffset - 0.05), Z_PROBE_OFFSET_RANGE_MIN, Z_PROBE_OFFSET_RANGE_MAX))
+        if (WITHIN((zprobe_zoffset - 0.01), Z_PROBE_OFFSET_RANGE_MIN, Z_PROBE_OFFSET_RANGE_MAX))
         {
           #if ENABLED(HAS_LEVELING)
-            zprobe_zoffset = (zprobe_zoffset - 0.05);
+            zprobe_zoffset = (zprobe_zoffset - 0.01);
             zprobe_zoffset = zprobe_zoffset - 0.00001;
           #endif
           babystep.add_mm(Z_AXIS, zprobe_zoffset - last_zoffset);
@@ -1642,6 +1507,13 @@ void RTSSHOW::RTS_HandleData()
       } 
       else if (recdat.data[0] == 12) {
         RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
+        queue.enqueue_now_P(PSTR("G28 X"));
+        queue.enqueue_now_P(PSTR("T0"));
+        active_extruder_flag = false;
+        active_extruder = 0;
+        active_extruder_font = active_extruder;
+        RTS_SndData(0, EXCHANGE_NOZZLE_ICON_VP);
+        RTS_SndData(10 * current_position[X_AXIS], AXIS_X_COORD_VP);
         queue.enqueue_now_P(PSTR("G35"));
       }
       RTS_SndData(0, MOTOR_FREE_ICON_VP);
@@ -2024,7 +1896,13 @@ void RTSSHOW::RTS_HandleData()
       if (recdat.data[0] == 1)
       {
         #if ENABLED(DUAL_X_CARRIAGE)
-          save_dual_x_carriage_mode = dualXPrintingModeStatus;
+          if (dualXPrintingModeStatus == 4) {
+            save_dual_x_carriage_mode = 5;
+          } else if (dualXPrintingModeStatus == 0) {
+            save_dual_x_carriage_mode = 4;
+          } else {
+            save_dual_x_carriage_mode = dualXPrintingModeStatus;
+          }
           switch(save_dual_x_carriage_mode)
           {
             case 1:
@@ -2189,7 +2067,13 @@ void RTSSHOW::RTS_HandleData()
         strcpy(cmdbuf, cmd);
         FilenamesCount = CardRecbuf.recordcount;
 
-        save_dual_x_carriage_mode = dualXPrintingModeStatus;
+        if (dualXPrintingModeStatus == 4) {
+          save_dual_x_carriage_mode = 5;
+        } else if (dualXPrintingModeStatus == 0) {
+          save_dual_x_carriage_mode = 4;
+        } else {
+          save_dual_x_carriage_mode = dualXPrintingModeStatus;
+        }
         switch(save_dual_x_carriage_mode)
         {
           case 1:
@@ -2206,26 +2090,6 @@ void RTSSHOW::RTS_HandleData()
             queue.enqueue_now_P(PSTR("M605 S0"));
             break;
         }
-        #if ENABLED(CHECKFILEMENT)
-          if((0 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT_PIN)))
-          {
-            RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-            sdcard_pause_check = false;
-            break;
-          }
-          else if((4 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT2_PIN)))
-          {
-            RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-            sdcard_pause_check = false;
-            break;
-          }
-          else if((4 != save_dual_x_carriage_mode) && (0 != save_dual_x_carriage_mode) && ((0 == READ(FIL_RUNOUT_PIN)) || (0 == READ(FIL_RUNOUT2_PIN))))
-          {
-            RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-            sdcard_pause_check = false;
-            break;
-          }
-        #endif
         queue.enqueue_one_now(cmd);
         delay(20);
         queue.enqueue_now_P(PSTR("M24"));
@@ -2351,9 +2215,11 @@ void RTSSHOW::RTS_HandleData()
       if (recdat.data[0] == 1)
       {
         settings.save();
+        RTS_SndData(StartSoundSet, SoundAddr);
       }
     break;
     case ChangePageKey:
+      SERIAL_ECHOLNPGM("Change Page: ", change_page_number);
       if ((change_page_number == 36) || (change_page_number == 76))
       {
         break;
@@ -2643,33 +2509,6 @@ void EachMomentUpdate()
         rtscheck.RTS_SndData(10 * Filament1LOAD, HEAD1_FILAMENT_LOAD_DATA_VP);
       }
 
-      #if ENABLED(CHECKFILEMENT)
-        if((0 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT_PIN)))
-        {
-          rtscheck.RTS_SndData(0, CHANGE_FILAMENT_ICON_VP);
-        }
-        else if((0 == save_dual_x_carriage_mode) && (1 == READ(FIL_RUNOUT_PIN)))
-        {
-          rtscheck.RTS_SndData(1, CHANGE_FILAMENT_ICON_VP);
-        }
-        else if((4 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT2_PIN)))
-        {
-          rtscheck.RTS_SndData(0, CHANGE_FILAMENT_ICON_VP);
-        }
-        else if((4 == save_dual_x_carriage_mode) && (1 == READ(FIL_RUNOUT2_PIN)))
-        {
-          rtscheck.RTS_SndData(1, CHANGE_FILAMENT_ICON_VP);
-        }
-        else if((0 != save_dual_x_carriage_mode) && ((0 == READ(FIL_RUNOUT_PIN)) || (0 == READ(FIL_RUNOUT2_PIN))))
-        {
-          rtscheck.RTS_SndData(0, CHANGE_FILAMENT_ICON_VP);
-        }
-        else if((0 != save_dual_x_carriage_mode) && (1 == READ(FIL_RUNOUT_PIN)) && (1 == READ(FIL_RUNOUT2_PIN)))
-        {
-          rtscheck.RTS_SndData(1, CHANGE_FILAMENT_ICON_VP);
-        }
-      #endif
-
       rtscheck.RTS_SndData(AutoHomeIconNum ++, AUTO_HOME_DISPLAY_ICON_VP);
       if (AutoHomeIconNum > 8)
       {
@@ -2681,6 +2520,7 @@ void EachMomentUpdate()
 }
 
 void SetExtruderMode(unsigned int mode) {
+  SERIAL_ECHOLNPGM("Select new extruder mode: ", mode);
   if (mode == 1)
   {
     //dual mode
@@ -2737,8 +2577,24 @@ void SetExtruderMode(unsigned int mode) {
     rtscheck.RTS_SndData(5, SELECT_MODE_ICON_VP);
   } else if (mode == 6)
   {
+    if (dualXPrintingModeStatus == 4) {
+      save_dual_x_carriage_mode = 5;
+    } else if (dualXPrintingModeStatus == 0) {
+      save_dual_x_carriage_mode = 4;
+    } else {
+      save_dual_x_carriage_mode = dualXPrintingModeStatus;
+    }
     settings.save();
     rtscheck.RTS_SndData(ExchangePageBase + 1, ExchangepageAddr);
+  } else {
+    //single 1 mode
+    rtscheck.RTS_SndData(0, MIRROR_MODE_ICON_VP);
+    rtscheck.RTS_SndData(0, TWO_COLOR_MODE_ICON_VP);
+    rtscheck.RTS_SndData(0, COPY_MODE_ICON_VP);
+    rtscheck.RTS_SndData(1, SINGLE_MODE_ICON_VP);
+    dualXPrintingModeStatus = 0;
+    rtscheck.RTS_SndData(4, PRINT_MODE_ICON_VP);
+    rtscheck.RTS_SndData(4, SELECT_MODE_ICON_VP);
   }
 }
 
@@ -2768,137 +2624,6 @@ void RTSUpdate()
 		rtscheck.RTS_SndData((int)card_insert_st, CHANGE_SDCARD_ICON_VP);
 		last_card_insert_st = card_insert_st;
 	}
-
-
-  #if ENABLED(CHECKFILEMENT)
-    // checking filement status during printing
-    if((true == card.isPrinting()) && (true == PoweroffContinue))
-    {
-      if((0 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT_PIN)))
-      {
-        Checkfilenum ++;
-        delay(5);
-      }
-      else if((4 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT2_PIN)))
-      {
-        Checkfilenum ++;
-        delay(5);
-      }
-      else if((4 != save_dual_x_carriage_mode) && (0 != save_dual_x_carriage_mode) && ((0 == READ(FIL_RUNOUT_PIN)) || (0 == READ(FIL_RUNOUT2_PIN))))
-      {
-        Checkfilenum ++;
-        delay(5);
-      }
-      else
-      {
-        delay(5);
-        if((0 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT_PIN)))
-        {
-          Checkfilenum ++;
-        }
-        else if((4 == save_dual_x_carriage_mode) && (0 == READ(FIL_RUNOUT2_PIN)))
-        {
-          Checkfilenum ++;
-        }
-        else if((4 != save_dual_x_carriage_mode) && (0 != save_dual_x_carriage_mode) && ((0 == READ(FIL_RUNOUT_PIN)) || (0 == READ(FIL_RUNOUT2_PIN))))
-        {
-          Checkfilenum ++;
-        }
-        else
-        {
-          Checkfilenum = 0;
-        }
-      }
-      if(Checkfilenum > 10)
-      {
-        rtscheck.RTS_SndData(Beep, SoundAddr);
-        pause_z = current_position[Z_AXIS];
-        pause_e = current_position[E_AXIS] - 5;
-        if((0 == save_dual_x_carriage_mode) && (thermalManager.temp_hotend[0].celsius <= (thermalManager.temp_hotend[0].target - 5)))
-        {
-          rtscheck.RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          card.pauseSDPrint();
-          print_job_timer.pause();
-
-          pause_action_flag = true;
-          Update_Time_Value = 0;
-          sdcard_pause_check = false;
-          PrintFlag = 1;
-        }
-        else if((4 == save_dual_x_carriage_mode) && (thermalManager.temp_hotend[1].celsius <= (thermalManager.temp_hotend[1].target - 5)))
-        {
-          rtscheck.RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          card.pauseSDPrint();
-          print_job_timer.pause();
-
-          pause_action_flag = true;
-          Update_Time_Value = 0;
-          sdcard_pause_check = false;
-          PrintFlag = 1;
-        }
-        else if((0 != save_dual_x_carriage_mode) && (4 != save_dual_x_carriage_mode) && ((thermalManager.temp_hotend[0].celsius <= (thermalManager.temp_hotend[0].target - 5)) || (thermalManager.temp_hotend[1].celsius <= (thermalManager.temp_hotend[1].target - 5))))
-        {
-          rtscheck.RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          card.pauseSDPrint();
-          print_job_timer.pause();
-
-          pause_action_flag = true;
-          Checkfilenum = 0;
-          Update_Time_Value = 0;
-          sdcard_pause_check = false;
-          print_preheat_check = true;
-          PrintFlag = 1;
-        }
-        else if(thermalManager.temp_bed.celsius <= thermalManager.temp_bed.target)
-        {
-          rtscheck.RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          card.pauseSDPrint();
-          print_job_timer.pause();
-
-          pause_action_flag = true;
-          Checkfilenum = 0;
-          Update_Time_Value = 0;
-          sdcard_pause_check = false;
-          print_preheat_check = true;
-          PrintFlag = 1;
-        }
-        else if((!TEST(axis_trusted, X_AXIS)) || (!TEST(axis_trusted, Y_AXIS)) || (!TEST(axis_trusted, Z_AXIS)))
-        {
-          rtscheck.RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
-          card.pauseSDPrint();
-          print_job_timer.pause();
-
-          pause_action_flag = true;
-          Checkfilenum = 0;
-          Update_Time_Value = 0;
-          sdcard_pause_check = false;
-          print_preheat_check = true;
-          PrintFlag = 1;
-        }
-        else
-        {
-          rtscheck.RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
-          waitway = 5;
-
-          #if ENABLED(POWER_LOSS_RECOVERY)
-            if (recovery.enabled)
-            {
-              recovery.save(true, false);
-            }
-          #endif
-          card.pauseSDPrint();
-          print_job_timer.pause();
-
-          pause_action_flag = true;
-          Checkfilenum = 0;
-          Update_Time_Value = 0;
-          sdcard_pause_check = false;
-          PrintFlag = 1;
-        }
-      }
-    }
-  #endif
-
   
   EachMomentUpdate();
   // wait to receive massage and response
