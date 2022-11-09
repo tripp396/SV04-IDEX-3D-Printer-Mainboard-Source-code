@@ -159,13 +159,14 @@ void ShowFilesOnCardPage(int page) {
   //enumerate files
   for (int k = min-1; k < max; k++) {
     card.selectFileByIndex(k);
+    SERIAL_ECHOLNPGM("Show on page: ", card.longest_filename());
     char shortFileName[20];
-    strncpy(shortFileName, card.longFilename, 20);
+    strncpy(shortFileName, card.longest_filename(), 20);
 
     rtscheck.RTS_SndData(shortFileName, buttonIndex);
 
-    if (!EndsWith(card.longFilename, "gcode") && !EndsWith(card.longFilename, "GCO") 
-        && !EndsWith(card.longFilename, "GCODE")) 
+    if (!EndsWith(card.longest_filename(), "gcode") && !EndsWith(card.longest_filename(), "GCO") 
+        && !EndsWith(card.longest_filename(), "GCODE")) 
     {
       //change color if dir
       rtscheck.RTS_SndData((unsigned long)0x0400, FilenameNature + (textIndex + 5) * 16);
@@ -2006,7 +2007,7 @@ void RTSSHOW::RTS_HandleData()
         }
 
         card.selectFileByIndex(index);
-        strcpy(fileInfo.currentDisplayFilename, card.longFilename);
+        strcpy(fileInfo.currentDisplayFilename, card.longest_filename());
         for (int j = 0; j < MAXPATHNAMELENGTH; j ++)
         {
           fileInfo.currentFilePath[j] = 0;
