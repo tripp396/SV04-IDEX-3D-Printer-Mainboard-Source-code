@@ -74,7 +74,7 @@
 #define MACVERSION      STRING_CONFIG_H_AUTHOR
 #define SOFTVERSION     SHORT_BUILD_VERSION
 #define CORP_WEBSITE    "bphillips09 on GH"
-#define Screen_version  "Screen: V2.0.B2"
+#define Screen_version  "Screen: V2.0.B3"
 
 /**
  * *** VENDORS PLEASE READ ***
@@ -996,7 +996,7 @@
   #endif
 #endif
 
-#define DEFAULT_EJERK    5.0  // May be used by Linear Advance
+#define DEFAULT_EJERK    15.0  // May be used by Linear Advance
 
 /**
  * Junction Deviation Factor

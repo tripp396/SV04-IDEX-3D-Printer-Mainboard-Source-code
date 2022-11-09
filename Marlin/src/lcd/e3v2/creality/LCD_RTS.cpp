@@ -46,11 +46,17 @@ float last_zoffset = 0.0;
 const float manual_feedrate_mm_m[] = {50 * 60, 50 * 60, 4 * 60, 60};
 
 int startprogress = 0;
-CRec CardRecbuf;
 float pause_z = 0;
 float pause_e = 0;
 bool sdcard_pause_check = true;
 bool print_preheat_check = false;
+uint16_t fileCount;
+uint16_t pages;
+int pageFileIndex;
+int currentPage;
+char* currentFilePath;
+char currentDisplayFilename[20];
+bool isDir[5];
 
 float ChangeFilament0Temp = 200;
 float ChangeFilament1Temp = 200;
@@ -78,13 +84,12 @@ extern CardReader card;
 bool lcd_sd_status;
 
 char Checkfilenum = 0;
-int FilenamesCount = 0;
 char cmdbuf[20] = {0};
 float Filament0LOAD = 10;
 float Filament1LOAD = 10;
 float XoffsetValue ;
 
-// 0 for 10mm, 1 for 1mm, 2 for 0.1mm
+// 1 for 0.1mm, 2 for 1mm, 3 for 10mm, 4 for 100mm
 unsigned char AxisUnitMode;
 float axis_unit = 10;
 unsigned char AutoHomeIconNum;
@@ -120,6 +125,95 @@ RTSSHOW::RTSSHOW()
   memset(databuf, 0, sizeof(databuf));
 }
 
+void ShowFilesOnCardPage(int page) {
+  if (page < 1) {
+    page = 1;
+  } else if (page > pages) {
+    page = pages;
+  }
+
+  currentPage = page;
+
+  char pageCount[3];
+  char maxPages[3];
+  itoa(page, pageCount, 10);
+  itoa(pages, maxPages, 10);
+  char statStr[7];
+  strcpy(statStr, pageCount);
+  strcat(statStr, "/");
+  strcat(statStr, maxPages);
+
+  for (int h = 0; h < 7; h++) {
+    rtscheck.RTS_SndData(0, PAGE_STATUS_TEXT_VP + h);
+  }
+
+  rtscheck.RTS_SndData(statStr, PAGE_STATUS_TEXT_VP);
+
+  int max = currentPage*5;
+  int min = max-4;
+  if (max > fileCount) {
+    max = fileCount;
+  }
+
+  for (int i = 0; i < 100; i += 20) {
+    for (int j = 0; j < 20; j++) {
+      rtscheck.RTS_SndData(0, FILE1_TEXT_VP + i + j);
+    }
+  }
+
+  uint16_t buttonIndex = FILE1_TEXT_VP;
+  uint16_t textIndex = 0;
+
+  //enumerate files
+  for (int k = min-1; k < max; k++) {
+    card.selectFileByIndex(k);
+    char* pointFilename = card.longFilename;
+    char shortFileName[20];
+    strncpy(shortFileName, pointFilename, 20);
+
+    rtscheck.RTS_SndData(shortFileName, buttonIndex);
+
+    if (!EndsWith(card.filename, "gcode") && !EndsWith(card.filename, "GCO") 
+        && !EndsWith(card.filename, "GCODE")) 
+    {
+      //change color if dir
+      rtscheck.RTS_SndData((unsigned long)0x0400, FilenameNature + (textIndex + 5) * 16);
+      isDir[textIndex] = true;
+    } else {
+      rtscheck.RTS_SndData((unsigned long)0xA514, FilenameNature + (textIndex + 5) * 16);
+      isDir[textIndex] = false;
+    }
+
+    textIndex++;
+    buttonIndex += 20;
+  }
+}
+
+void InitCardList() {
+  char* dirName = card.getWorkDirName();
+  char shortDirName[20];
+  for(int j = 0; j < 20; j++)
+  {
+    // clean filename
+    rtscheck.RTS_SndData(0, SELECT_FILE_TEXT_VP + j);
+  }
+
+  strncpy(shortDirName, dirName, 20);
+  rtscheck.RTS_SndData(shortDirName, SELECT_FILE_TEXT_VP);
+
+  fileCount = card.get_num_Files();
+  pages = ((fileCount-1) / 5)+1;
+
+  for (uint16_t i = 0; i < 4; i++)
+  {
+    delay(3);
+    rtscheck.RTS_SndData((unsigned long)0xA514, FilenameNature + (i + 5) * 16);
+    rtscheck.RTS_SndData(0, FILE1_SELECT_ICON_VP + i);
+  }
+
+  ShowFilesOnCardPage(1);
+}
+
 void RTSSHOW::RTS_SDCardInit(void)
 {
   if(RTS_SD_Detected())
@@ -128,73 +222,24 @@ void RTSSHOW::RTS_SDCardInit(void)
   }
   if(CardReader::flag.mounted)
   {
-    uint16_t fileCnt = card.get_num_Files();
-    card.getWorkDirName();
-    if(card.filename[0] != '/')
-    {
-      card.cdup();
-    }
-
-    int addrnum = 0;
-    int num = 0;
-    for(uint16_t i = 0;(i < fileCnt) && (i < (MaxFileNumber + addrnum));i ++)
-    {
-      card.selectFileByIndex(fileCnt - 1 - i);
-      char *pointFilename = card.longFilename;
-      int filenamelen = strlen(card.longFilename);
-      int j = 1;
-      while((strncmp(&pointFilename[j], ".gcode", 6) && strncmp(&pointFilename[j], ".GCODE", 6)) && ((j ++) < filenamelen));
-      if(j >= filenamelen)
-      {
-        addrnum++;
-        continue;
-      }
-
-      if (j >= TEXTBYTELEN)
-      {
-        strncpy(&card.longFilename[TEXTBYTELEN - 3], "..", 2);
-        card.longFilename[TEXTBYTELEN - 1] = '\0';
-        j = TEXTBYTELEN - 1;
-      }
-
-      strncpy(CardRecbuf.Cardshowfilename[num], card.longFilename, j);
-
-      strcpy(CardRecbuf.Cardfilename[num], card.filename);
-      CardRecbuf.addr[num] = FILE1_TEXT_VP + (num * 20);
-      RTS_SndData(CardRecbuf.Cardshowfilename[num], CardRecbuf.addr[num]);
-      CardRecbuf.Filesum = (++num);
-    }
-    for(int j = CardRecbuf.Filesum;j < MaxFileNumber;j ++)
-    {
-      CardRecbuf.addr[j] = FILE1_TEXT_VP + (j * 20);
-      RTS_SndData(0, CardRecbuf.addr[j]);
-    }
-    for(int j = 0;j < 20;j ++)
-    {
-      // clean print file
-      RTS_SndData(0, PRINT_FILE_TEXT_VP + j);
-    }
+    card.cdroot();
+    InitCardList();
     lcd_sd_status = IS_SD_INSERTED();
   }
   else
   {
     if(sd_printing_autopause == true)
     {
-      RTS_SndData(CardRecbuf.Cardshowfilename[CardRecbuf.recordcount], PRINT_FILE_TEXT_VP);
+      RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
       card.mount();
     }
     else
     {
-      // clean filename Icon
-      for(int j = 0;j < MaxFileNumber;j ++)
+      for(int j = 0;j < 20;j ++)
       {
-        // clean filename Icon
-        for(int i = 0;i < TEXTBYTELEN;i ++)
-        {
-          RTS_SndData(0, CardRecbuf.addr[j] + i);
-        }
+        // clean screen.
+        RTS_SndData(0, PRINT_FILE_TEXT_VP + j);
       }
-      memset(&CardRecbuf, 0, sizeof(CardRecbuf));
     }
   }
 }
@@ -250,26 +295,16 @@ void RTSSHOW::RTS_SDCardUpate(void)
       card.release();
       if(sd_printing_autopause == true)
       {
-        RTS_SndData(CardRecbuf.Cardshowfilename[CardRecbuf.recordcount], PRINT_FILE_TEXT_VP);
+        RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
       }
       else
       {
-        for(int i = 0;i < CardRecbuf.Filesum;i ++)
-        {
-          for(int j = 0;j < 20;j ++)
-          {
-            RTS_SndData(0, CardRecbuf.addr[i] + j);
-          }
-          RTS_SndData((unsigned long)0xA514, FilenameNature + (i + 1) * 16);
-        }
-
         for(int j = 0;j < 20;j ++)
         {
           // clean screen.
           RTS_SndData(0, PRINT_FILE_TEXT_VP + j);
           RTS_SndData(0, SELECT_FILE_TEXT_VP + j);
         }
-        memset(&CardRecbuf, 0, sizeof(CardRecbuf));
       }
     }
     lcd_sd_status = sd_status;
@@ -278,12 +313,8 @@ void RTSSHOW::RTS_SDCardUpate(void)
   // represents to update file list
   if(CardUpdate && lcd_sd_status && RTS_SD_Detected())
   {
-    for(uint16_t i = 0;i < CardRecbuf.Filesum;i ++)
-    {
-      delay(1);
-      RTS_SndData(CardRecbuf.Cardshowfilename[i], CardRecbuf.addr[i]);
-      RTS_SndData((unsigned long)0xA514, FilenameNature + (i + 1) * 16);
-    }
+    card.cdroot();
+    InitCardList();
     CardUpdate = false;
   }
 }
@@ -291,7 +322,7 @@ void RTSSHOW::RTS_SDCardUpate(void)
 void RTSSHOW::RTS_Init()
 {
   SERIAL_ECHOLNPGM("RTS Init");
-  AxisUnitMode = 1;
+  AxisUnitMode = 3;
   active_extruder = active_extruder_font;
   #if ENABLED(DUAL_X_CARRIAGE)
     if (dualXPrintingModeStatus == 4) {
@@ -764,14 +795,13 @@ void RTSSHOW::RTS_HandleData()
       if(recdat.data[0] == 1)
       {
         CardUpdate = true;
-        CardRecbuf.recordcount = -1;
         if(CardReader::flag.mounted)
         {
           for (int j = 0; j < 20; j ++)
             {
               RTS_SndData(0, SELECT_FILE_TEXT_VP + j);
             }
-          RTS_SndData(ExchangePageBase + 2, ExchangepageAddr);
+          RTS_SndData(ExchangePageBase + 3, ExchangepageAddr);
         }
         else
         {
@@ -968,7 +998,7 @@ void RTSSHOW::RTS_HandleData()
         {
           char cmd[30];
           char *c;
-          sprintf_P(cmd, PSTR("M23 %s"), CardRecbuf.Cardfilename[FilenamesCount]);
+          sprintf_P(cmd, PSTR("M23 %s"), currentFilePath);
           for (c = &cmd[4]; *c; c++)
             *c = tolower(*c);
 
@@ -980,7 +1010,7 @@ void RTSSHOW::RTS_HandleData()
           {
             RTS_SndData(0, PRINT_FILE_TEXT_VP + j);
           }
-          RTS_SndData(CardRecbuf.Cardshowfilename[CardRecbuf.recordcount], PRINT_FILE_TEXT_VP);
+          RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
           delay(2);
           #if ENABLED(BABYSTEPPING)
             RTS_SndData(0, AUTO_BED_LEVEL_ZOFFSET_VP);
@@ -1014,13 +1044,7 @@ void RTSSHOW::RTS_HandleData()
           PrintFlag = 2;
 
           if (card.isPrinting) {
-            for(uint16_t i = 0;i < CardRecbuf.Filesum;i ++) 
-            {
-              if(!strcmp(CardRecbuf.Cardfilename[i], &recovery.info.sd_filename[1]))
-              {
-                rtscheck.RTS_SndData(CardRecbuf.Cardshowfilename[i], PRINT_FILE_TEXT_VP);
-              }
-            }
+            rtscheck.RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
           }
 
           sd_printing_autopause = true;
@@ -1180,9 +1204,15 @@ void RTSSHOW::RTS_HandleData()
       break;
 
     case AxisPageSelectKey:
-      if(recdat.data[0] == 1)
+      if(recdat.data[0] == 5)
       {
-        AxisUnitMode = 1;
+        AxisUnitMode = 4;
+        axis_unit = 100.0;
+        RTS_SndData(ExchangePageBase + 58, ExchangepageAddr);
+      } 
+      else if(recdat.data[0] == 1)
+      {
+        AxisUnitMode = 3;
         axis_unit = 10.0;
         RTS_SndData(ExchangePageBase + 29, ExchangepageAddr);
       }
@@ -1194,7 +1224,7 @@ void RTSSHOW::RTS_HandleData()
       }
       else if(recdat.data[0] == 3)
       {
-        AxisUnitMode = 3;
+        AxisUnitMode = 1;
         axis_unit = 0.1;
         RTS_SndData(ExchangePageBase + 31, ExchangepageAddr);
       }
@@ -1264,7 +1294,7 @@ void RTSSHOW::RTS_HandleData()
           active_extruder_flag = true;
         }
 
-        AxisUnitMode = 1;
+        AxisUnitMode = 3;
         if(active_extruder == 0)
         {
           if(TEST(axis_trusted, X_AXIS))
@@ -1412,7 +1442,6 @@ void RTSSHOW::RTS_HandleData()
       }
       else if (recdat.data[0] == 4)
       {
-         
         RTS_SndData(ExchangePageBase + 28, ExchangepageAddr);
         if(active_extruder == 0)
         {
@@ -1973,27 +2002,47 @@ void RTSSHOW::RTS_HandleData()
     case SelectFileKey:
       if (RTS_SD_Detected())
       {
-        if (recdat.data[0] > CardRecbuf.Filesum)
+        pageFileIndex = recdat.data[0]-5;
+        int index = 5*(currentPage-1) + pageFileIndex;
+
+        if (index >= card.countFilesInWorkDir())
         {
           break;
         }
 
-        CardRecbuf.recordcount = recdat.data[0] - 1;
+        card.selectFileByIndex(index);
+        currentFilePath = card.filename;
+        strcpy(currentDisplayFilename, card.longFilename);
+
+        if (!EndsWith(currentFilePath, "gcode") && !EndsWith(currentFilePath, "GCO") 
+        && !EndsWith(currentFilePath, "GCODE")) 
+        {
+          card.cd(currentFilePath);
+          InitCardList();
+          break;
+        }
+
         for (int j = 0; j < 10; j ++)
         {
           RTS_SndData(0, SELECT_FILE_TEXT_VP + j);
           RTS_SndData(0, PRINT_FILE_TEXT_VP + j);
         }
-        RTS_SndData(CardRecbuf.Cardshowfilename[CardRecbuf.recordcount], SELECT_FILE_TEXT_VP);
-        RTS_SndData(CardRecbuf.Cardshowfilename[CardRecbuf.recordcount], PRINT_FILE_TEXT_VP);
+
+        RTS_SndData(currentDisplayFilename, SELECT_FILE_TEXT_VP);
+        RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
         delay(2);
-        for(int j = 1;j <= CardRecbuf.Filesum;j ++)
+
+        for(int j = 1; j <= 5; j ++)
         {
-          RTS_SndData((unsigned long)0xA514, FilenameNature + j * 16);
+          if (!isDir[j-1]) {
+            RTS_SndData((unsigned long)0xA514, FilenameNature + (j + 4) * 16);
+          }
         }
+
         RTS_SndData((unsigned long)0x073F, FilenameNature + recdat.data[0] * 16);
         RTS_SndData(1, FILE1_SELECT_ICON_VP + (recdat.data[0] - 1));
       }
+
       break;
 
     case PrintFileKey:
@@ -2011,61 +2060,39 @@ void RTSSHOW::RTS_HandleData()
         {
           RTS_SndData(4, SELECT_MODE_ICON_VP);
         }
-        RTS_SndData(CardRecbuf.Cardshowfilename[CardRecbuf.recordcount], PRINT_FILE_TEXT_VP);
+        RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
         RTS_SndData(ExchangePageBase + 56, ExchangepageAddr);
       }
-      else if(recdat.data[0] == 2)
+      else if (recdat.data[0] == 2) 
       {
-        RTS_SndData(ExchangePageBase + 3, ExchangepageAddr);
+        //dir back
+        card.cdup();
+        InitCardList();
       }
       else if(recdat.data[0] == 3)
       {
-        RTS_SndData(ExchangePageBase + 2, ExchangepageAddr);
+        //page left
+        ShowFilesOnCardPage(currentPage-1);
       }
       else if(recdat.data[0] == 4)
       {
-        RTS_SndData(ExchangePageBase + 4, ExchangepageAddr);
-      }
-      else if(recdat.data[0] == 5)
-      {
-        RTS_SndData(ExchangePageBase + 3, ExchangepageAddr);
-      }
-      else if(recdat.data[0] == 6)
-      {
-        RTS_SndData(ExchangePageBase + 5, ExchangepageAddr);
-      }
-      else if(recdat.data[0] == 7)
-      {
-        RTS_SndData(ExchangePageBase + 4, ExchangepageAddr);
-      }
-      else if(recdat.data[0] == 8)
-      {
-        RTS_SndData(ExchangePageBase + 6, ExchangepageAddr);
-      }
-      else if(recdat.data[0] == 9)
-      {
-        RTS_SndData(ExchangePageBase + 5, ExchangepageAddr);
-      }
-      else if(recdat.data[0] == 10)
-      {
-        RTS_SndData(ExchangePageBase + 1, ExchangepageAddr);
+        //page right
+        ShowFilesOnCardPage(currentPage+1);
       }
       else if ((recdat.data[0] == 11) && RTS_SD_Detected())
       {
-        if (CardRecbuf.recordcount < 0)
-        {
+        if (!card.fileExists(currentFilePath)) {
           break;
         }
 
         char cmd[30];
         char *c;
-        sprintf_P(cmd, PSTR("M23 %s"), CardRecbuf.Cardfilename[CardRecbuf.recordcount]);
+        sprintf_P(cmd, PSTR("M23 %s"), currentFilePath);
         for (c = &cmd[4]; *c; c++)
           *c = tolower(*c);
 
         memset(cmdbuf, 0, sizeof(cmdbuf));
         strcpy(cmdbuf, cmd);
-        FilenamesCount = CardRecbuf.recordcount;
 
         if (dualXPrintingModeStatus == 4) {
           save_dual_x_carriage_mode = 5;
@@ -2099,7 +2126,7 @@ void RTSSHOW::RTS_HandleData()
           RTS_SndData(0, PRINT_FILE_TEXT_VP + j);
         }
 
-        RTS_SndData(CardRecbuf.Cardshowfilename[CardRecbuf.recordcount], PRINT_FILE_TEXT_VP);
+        RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
 
         delay(2);
 
@@ -2274,7 +2301,7 @@ void RTSSHOW::RTS_HandleData()
         RTS_SndData(4, SELECT_MODE_ICON_VP);
       }
 
-      for (int i = 0; i < MaxFileNumber; i ++)
+      for (int i = 0; i < card.get_num_Files(); i ++)
       {
         for (int j = 0; j < 20; j ++)
         {
@@ -2282,13 +2309,9 @@ void RTSSHOW::RTS_HandleData()
         }
       }
 
-      for (int i = 0; i < CardRecbuf.Filesum; i++)
+      for (int i = 1; i < 5; i++)
       {
-        for (int j = 0; j < 20; j++)
-        {
-          RTS_SndData(0, CardRecbuf.addr[i] + j);
-        }
-        RTS_SndData((unsigned long)0xA514, FilenameNature + (i + 1) * 16);
+        RTS_SndData((unsigned long)0xA514, FilenameNature + (i + 4) * 16);
       }
 
       for (int j = 0; j < 20; j ++)
@@ -2304,18 +2327,13 @@ void RTSSHOW::RTS_HandleData()
         RTS_SndData(10, FILE1_SELECT_ICON_VP + j);
       }
 
-      RTS_SndData(CardRecbuf.Cardshowfilename[CardRecbuf.recordcount], PRINT_FILE_TEXT_VP);
+      RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
 
       // represents to update file list
       if (CardUpdate && lcd_sd_status && IS_SD_INSERTED())
       {
-        for (uint16_t i = 0; i < CardRecbuf.Filesum; i++)
-        {
-          delay(3);
-          RTS_SndData(CardRecbuf.Cardshowfilename[i], CardRecbuf.addr[i]);
-          RTS_SndData((unsigned long)0xA514, FilenameNature + (i + 1) * 16);
-          RTS_SndData(0, FILE1_SELECT_ICON_VP + i);
-        }
+        card.cdroot();
+        InitCardList();
       }
 
       char sizeBuf[20];
@@ -2366,6 +2384,17 @@ void RTSSHOW::RTS_HandleData()
   recdat.head[1] = FHTWO;
 }
 
+int EndsWith(const char *str, const char *suffix)
+{
+    if (!str || !suffix)
+        return 0;
+    size_t lenstr = strlen(str);
+    size_t lensuffix = strlen(suffix);
+    if (lensuffix >  lenstr)
+        return 0;
+    return strncmp(str + lenstr - lensuffix, suffix, lensuffix) == 0;
+}
+
 void EachMomentUpdate()
 {
   millis_t ms = millis();
@@ -2384,15 +2413,12 @@ void EachMomentUpdate()
       {
         rtscheck.RTS_SndData(StartSoundSet, SoundAddr);
         power_off_type_yes = 1;
-        for(uint16_t i = 0;i < CardRecbuf.Filesum;i ++) 
-        {
-          if(!strcmp(CardRecbuf.Cardfilename[i], &recovery.info.sd_filename[1]))
-          {
-            rtscheck.RTS_SndData(CardRecbuf.Cardshowfilename[i], PRINT_FILE_TEXT_VP);
+        #if ENABLED(POWER_LOSS_RECOVERY)
+          if (card.jobRecoverFileExists()) {
+            rtscheck.RTS_SndData(recovery.filename, PRINT_FILE_TEXT_VP);
             rtscheck.RTS_SndData(ExchangePageBase + 36, ExchangepageAddr);
-            break;
           }
-        }
+        #endif
         StartFlag = 1;
       }
       return;
@@ -2660,7 +2686,22 @@ void RTS_MoveAxisHoming()
 {
   if(waitway == 4)
   {
-    rtscheck.RTS_SndData(ExchangePageBase + 29 + (AxisUnitMode - 1), ExchangepageAddr);
+    if(AxisUnitMode == 4)
+    {
+      rtscheck.RTS_SndData(ExchangePageBase + 58, ExchangepageAddr);
+    } 
+    else if(AxisUnitMode == 3)
+    {
+      rtscheck.RTS_SndData(ExchangePageBase + 29, ExchangepageAddr);
+    } 
+    else if(AxisUnitMode == 2)
+    {
+      rtscheck.RTS_SndData(ExchangePageBase + 30, ExchangepageAddr);
+    } 
+    else if(AxisUnitMode == 1)
+    {
+      rtscheck.RTS_SndData(ExchangePageBase + 31, ExchangepageAddr);
+    } 
     waitway = 0;
   }
   else if(waitway == 6)

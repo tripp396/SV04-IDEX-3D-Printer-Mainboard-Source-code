@@ -147,7 +147,7 @@ void GcodeSuite::G35() {
       char str[24];
       strcpy(str, (screw_thread & 1) == (adjust > 0) ? "CCW " : "CW ");
       strcat(str, turns);
-      strcat(str, " turns & ");
+      strcat(str, " turns  & ");
       strcat(str, mins);
       strcat(str, " mins");
 

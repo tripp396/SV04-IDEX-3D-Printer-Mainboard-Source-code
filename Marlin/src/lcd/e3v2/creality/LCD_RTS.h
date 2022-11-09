@@ -97,47 +97,47 @@ extern int power_off_type_yes;
 #define CHANGE_SDCARD_ICON_VP              0x1168
 
 #define MOTOR_FREE_ICON_VP                 0x1200
-#define FILE1_SELECT_ICON_VP               0x1221
-#define FILE2_SELECT_ICON_VP               0x1222
-#define FILE3_SELECT_ICON_VP               0x1223
-#define FILE4_SELECT_ICON_VP               0x1224
-#define FILE5_SELECT_ICON_VP               0x1225
-#define FILE6_SELECT_ICON_VP               0x1226
-#define FILE7_SELECT_ICON_VP               0x1227
-#define FILE8_SELECT_ICON_VP               0x1228
-#define FILE9_SELECT_ICON_VP               0x1229
-#define FILE10_SELECT_ICON_VP              0x122A
-#define FILE11_SELECT_ICON_VP              0x122B
-#define FILE12_SELECT_ICON_VP              0x122C
-#define FILE13_SELECT_ICON_VP              0x122D
-#define FILE14_SELECT_ICON_VP              0x122E
-#define FILE15_SELECT_ICON_VP              0x122F
-#define FILE16_SELECT_ICON_VP              0x1230
-#define FILE17_SELECT_ICON_VP              0x1231
-#define FILE18_SELECT_ICON_VP              0x1232
-#define FILE19_SELECT_ICON_VP              0x1233
-#define FILE20_SELECT_ICON_VP              0x1234
+#define FILE1_SELECT_ICON_VP               0x1225
+//#define FILE2_SELECT_ICON_VP               0x1222
+//#define FILE3_SELECT_ICON_VP               0x1223
+//#define FILE4_SELECT_ICON_VP               0x1224
+//#define FILE5_SELECT_ICON_VP               0x1225
+//#define FILE6_SELECT_ICON_VP               0x1226
+//#define FILE7_SELECT_ICON_VP               0x1227
+//#define FILE8_SELECT_ICON_VP               0x1228
+//#define FILE9_SELECT_ICON_VP               0x1229
+//#define FILE10_SELECT_ICON_VP              0x122A
+//#define FILE11_SELECT_ICON_VP              0x122B
+//#define FILE12_SELECT_ICON_VP              0x122C
+//#define FILE13_SELECT_ICON_VP              0x122D
+//#define FILE14_SELECT_ICON_VP              0x122E
+//#define FILE15_SELECT_ICON_VP              0x122F
+//#define FILE16_SELECT_ICON_VP              0x1230
+//#define FILE17_SELECT_ICON_VP              0x1231
+//#define FILE18_SELECT_ICON_VP              0x1232
+//#define FILE19_SELECT_ICON_VP              0x1233
+//#define FILE20_SELECT_ICON_VP              0x1234
 
-#define FILE1_TEXT_VP                      0x200A
-#define FILE2_TEXT_VP                      0x201E
-#define FILE3_TEXT_VP                      0x2032
-#define FILE4_TEXT_VP                      0x2046
-#define FILE5_TEXT_VP                      0x205A
-#define FILE6_TEXT_VP                      0x206E
-#define FILE7_TEXT_VP                      0x2082
-#define FILE8_TEXT_VP                      0x2096
-#define FILE9_TEXT_VP                      0x20AA
-#define FILE10_TEXT_VP                     0x20BE
-#define FILE11_TEXT_VP                     0x20D2
-#define FILE12_TEXT_VP                     0x20E6
-#define FILE13_TEXT_VP                     0x20FA
-#define FILE14_TEXT_VP                     0x210E
-#define FILE15_TEXT_VP                     0x2122
-#define FILE16_TEXT_VP                     0x2136
-#define FILE17_TEXT_VP                     0x214A
-#define FILE18_TEXT_VP                     0x215E
-#define FILE19_TEXT_VP                     0x2172
-#define FILE20_TEXT_VP                     0x2186
+#define PAGE_STATUS_TEXT_VP                0x201E
+#define FILE1_TEXT_VP                      0x205A
+//#define FILE3_TEXT_VP                      0x2032
+//#define FILE4_TEXT_VP                      0x2046
+//#define FILE5_TEXT_VP                      0x205A
+//#define FILE6_TEXT_VP                      0x206E
+//#define FILE7_TEXT_VP                      0x2082
+//#define FILE8_TEXT_VP                      0x2096
+//#define FILE9_TEXT_VP                      0x20AA
+//#define FILE10_TEXT_VP                     0x20BE
+//#define FILE11_TEXT_VP                     0x20D2
+//#define FILE12_TEXT_VP                     0x20E6
+//#define FILE13_TEXT_VP                     0x20FA
+//#define FILE14_TEXT_VP                     0x210E
+//#define FILE15_TEXT_VP                     0x2122
+//#define FILE16_TEXT_VP                     0x2136
+//#define FILE17_TEXT_VP                     0x214A
+//#define FILE18_TEXT_VP                     0x215E
+//#define FILE19_TEXT_VP                     0x2172
+//#define FILE20_TEXT_VP                     0x2186
 
 #define SELECT_FILE_TEXT_VP                0x219A
 #define TWO_COLOR_MODE_ICON_VP             0x21B8
@@ -161,15 +161,6 @@ typedef struct DataBuf
   unsigned short data[32];
   unsigned char reserv[4];
 } DB;
-
-typedef struct CardRecord
-{
-  int recordcount;
-  int Filesum;
-  unsigned long addr[FileNum];
-  char Cardshowfilename[FileNum][FileNameLen];
-  char Cardfilename[FileNum][FileNameLen];
-}CRec;
 
 class RTSUI
 {
@@ -292,6 +283,7 @@ const unsigned long Addrbuf[] =
   0
 };
 
+extern int EndsWith(const char*, const char*);
 extern void SetExtruderMode(unsigned int);
 extern void RTSUpdate();
 extern void RTSInit();
