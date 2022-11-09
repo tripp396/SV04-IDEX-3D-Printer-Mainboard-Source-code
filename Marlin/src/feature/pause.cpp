@@ -465,7 +465,12 @@ bool pause_print(const_float_t retract, const xyz_pos_t &park_point, const bool 
   }
 
   // If axes don't need to home then the nozzle can park
-  if (do_park) nozzle.park(0, park_point); // Park the nozzle by doing a Minimum Z Raise followed by an XY Move
+  xyz_pos_t safeParkPoint = park_point;
+
+  if (active_extruder == 0) safeParkPoint.x = X1_MIN_POS + 10;
+  if (active_extruder == 1) safeParkPoint.x = X2_MAX_POS - 10;
+
+  if (do_park) nozzle.park(0, safeParkPoint); // Park the nozzle by doing a Minimum Z Raise followed by an XY Move
 
   #if ENABLED(DUAL_X_CARRIAGE)
     const int8_t saved_ext        = active_extruder;

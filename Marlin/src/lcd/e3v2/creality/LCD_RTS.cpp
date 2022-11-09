@@ -50,14 +50,6 @@ float pause_z = 0;
 float pause_e = 0;
 bool sdcard_pause_check = true;
 bool print_preheat_check = false;
-uint16_t fileCount;
-uint16_t pages;
-int pageFileIndex;
-int currentPage;
-char* currentFilePath;
-char currentDisplayFilename[20];
-bool isDir[5];
-
 float ChangeFilament0Temp = 200;
 float ChangeFilament1Temp = 200;
 
@@ -128,16 +120,16 @@ RTSSHOW::RTSSHOW()
 void ShowFilesOnCardPage(int page) {
   if (page < 1) {
     page = 1;
-  } else if (page > pages) {
-    page = pages;
+  } else if (page > rtscheck.fileInfo.pages) {
+    page = rtscheck.fileInfo.pages;
   }
 
-  currentPage = page;
+  rtscheck.fileInfo.currentPage = page;
 
   char pageCount[3];
   char maxPages[3];
   itoa(page, pageCount, 10);
-  itoa(pages, maxPages, 10);
+  itoa(rtscheck.fileInfo.pages, maxPages, 10);
   char statStr[7];
   strcpy(statStr, pageCount);
   strcat(statStr, "/");
@@ -149,10 +141,10 @@ void ShowFilesOnCardPage(int page) {
 
   rtscheck.RTS_SndData(statStr, PAGE_STATUS_TEXT_VP);
 
-  int max = currentPage*5;
+  int max = rtscheck.fileInfo.currentPage*5;
   int min = max-4;
-  if (max > fileCount) {
-    max = fileCount;
+  if (max > rtscheck.fileInfo.fileCount) {
+    max = rtscheck.fileInfo.fileCount;
   }
 
   for (int i = 0; i < 100; i += 20) {
@@ -167,21 +159,20 @@ void ShowFilesOnCardPage(int page) {
   //enumerate files
   for (int k = min-1; k < max; k++) {
     card.selectFileByIndex(k);
-    char* pointFilename = card.longFilename;
     char shortFileName[20];
-    strncpy(shortFileName, pointFilename, 20);
+    strncpy(shortFileName, card.longFilename, 20);
 
     rtscheck.RTS_SndData(shortFileName, buttonIndex);
 
-    if (!EndsWith(card.filename, "gcode") && !EndsWith(card.filename, "GCO") 
-        && !EndsWith(card.filename, "GCODE")) 
+    if (!EndsWith(card.longFilename, "gcode") && !EndsWith(card.longFilename, "GCO") 
+        && !EndsWith(card.longFilename, "GCODE")) 
     {
       //change color if dir
       rtscheck.RTS_SndData((unsigned long)0x0400, FilenameNature + (textIndex + 5) * 16);
-      isDir[textIndex] = true;
+      rtscheck.fileInfo.isDir[textIndex] = true;
     } else {
       rtscheck.RTS_SndData((unsigned long)0xA514, FilenameNature + (textIndex + 5) * 16);
-      isDir[textIndex] = false;
+      rtscheck.fileInfo.isDir[textIndex] = false;
     }
 
     textIndex++;
@@ -190,19 +181,23 @@ void ShowFilesOnCardPage(int page) {
 }
 
 void InitCardList() {
-  char* dirName = card.getWorkDirName();
+  for(int j = 0; j < MAXPATHNAMELENGTH; j++)
+  {
+    rtscheck.fileInfo.currentDir[j] = 0;
+  }
+
+  card.getAbsFilenameInCWD(rtscheck.fileInfo.currentDir);
   char shortDirName[20];
   for(int j = 0; j < 20; j++)
   {
-    // clean filename
     rtscheck.RTS_SndData(0, SELECT_FILE_TEXT_VP + j);
   }
 
-  strncpy(shortDirName, dirName, 20);
+  strncpy(shortDirName, rtscheck.fileInfo.currentDir, 20);
   rtscheck.RTS_SndData(shortDirName, SELECT_FILE_TEXT_VP);
 
-  fileCount = card.get_num_Files();
-  pages = ((fileCount-1) / 5)+1;
+  rtscheck.fileInfo.fileCount = card.get_num_Files();
+  rtscheck.fileInfo.pages = ((rtscheck.fileInfo.fileCount-1) / 5)+1;
 
   for (uint16_t i = 0; i < 4; i++)
   {
@@ -230,7 +225,7 @@ void RTSSHOW::RTS_SDCardInit(void)
   {
     if(sd_printing_autopause == true)
     {
-      RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
+      RTS_SndData(fileInfo.currentDisplayFilename, PRINT_FILE_TEXT_VP);
       card.mount();
     }
     else
@@ -295,7 +290,7 @@ void RTSSHOW::RTS_SDCardUpate(void)
       card.release();
       if(sd_printing_autopause == true)
       {
-        RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
+        RTS_SndData(fileInfo.currentDisplayFilename, PRINT_FILE_TEXT_VP);
       }
       else
       {
@@ -996,9 +991,9 @@ void RTSSHOW::RTS_HandleData()
         }
         else if(PoweroffContinue == false)
         {
-          char cmd[30];
+          char cmd[MAX_CMD_SIZE+16];
           char *c;
-          sprintf_P(cmd, PSTR("M23 %s"), currentFilePath);
+          sprintf_P(cmd, PSTR("M23 %s"), fileInfo.currentFilePath);
           for (c = &cmd[4]; *c; c++)
             *c = tolower(*c);
 
@@ -1010,7 +1005,7 @@ void RTSSHOW::RTS_HandleData()
           {
             RTS_SndData(0, PRINT_FILE_TEXT_VP + j);
           }
-          RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
+          RTS_SndData(fileInfo.currentDisplayFilename, PRINT_FILE_TEXT_VP);
           delay(2);
           #if ENABLED(BABYSTEPPING)
             RTS_SndData(0, AUTO_BED_LEVEL_ZOFFSET_VP);
@@ -1044,7 +1039,7 @@ void RTSSHOW::RTS_HandleData()
           PrintFlag = 2;
 
           if (card.isPrinting) {
-            rtscheck.RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
+            rtscheck.RTS_SndData(fileInfo.currentDisplayFilename, PRINT_FILE_TEXT_VP);
           }
 
           sd_printing_autopause = true;
@@ -2002,8 +1997,8 @@ void RTSSHOW::RTS_HandleData()
     case SelectFileKey:
       if (RTS_SD_Detected())
       {
-        pageFileIndex = recdat.data[0]-5;
-        int index = 5*(currentPage-1) + pageFileIndex;
+        fileInfo.pageFileIndex = recdat.data[0]-5;
+        int index = 5*(fileInfo.currentPage-1) + fileInfo.pageFileIndex;
 
         if (index >= card.countFilesInWorkDir())
         {
@@ -2011,32 +2006,33 @@ void RTSSHOW::RTS_HandleData()
         }
 
         card.selectFileByIndex(index);
-        currentFilePath = card.filename;
-        strcpy(currentDisplayFilename, card.longFilename);
-
-        if (!EndsWith(currentFilePath, "gcode") && !EndsWith(currentFilePath, "GCO") 
-        && !EndsWith(currentFilePath, "GCODE")) 
+        strcpy(fileInfo.currentDisplayFilename, card.longFilename);
+        for (int j = 0; j < MAXPATHNAMELENGTH; j ++)
         {
-          card.cd(currentFilePath);
+          fileInfo.currentFilePath[j] = 0;
+        }
+        card.getAbsFilenameInCWD(fileInfo.currentFilePath);
+        strcat(fileInfo.currentFilePath, card.filename);
+
+        if (!EndsWith(fileInfo.currentFilePath, "gcode") && !EndsWith(fileInfo.currentFilePath, "GCO") 
+        && !EndsWith(fileInfo.currentFilePath, "GCODE")) 
+        {
+          card.cd(fileInfo.currentFilePath);
           InitCardList();
           break;
         }
 
         for (int j = 0; j < 10; j ++)
         {
-          RTS_SndData(0, SELECT_FILE_TEXT_VP + j);
           RTS_SndData(0, PRINT_FILE_TEXT_VP + j);
         }
 
-        RTS_SndData(currentDisplayFilename, SELECT_FILE_TEXT_VP);
-        RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
+        RTS_SndData(fileInfo.currentDisplayFilename, PRINT_FILE_TEXT_VP);
         delay(2);
 
-        for(int j = 1; j <= 5; j ++)
+        for(int j = 0; j <= 4; j ++)
         {
-          if (!isDir[j-1]) {
-            RTS_SndData((unsigned long)0xA514, FilenameNature + (j + 4) * 16);
-          }
+            RTS_SndData((unsigned long)0xA514, FilenameNature + (j + 5) * 16);
         }
 
         RTS_SndData((unsigned long)0x073F, FilenameNature + recdat.data[0] * 16);
@@ -2060,7 +2056,7 @@ void RTSSHOW::RTS_HandleData()
         {
           RTS_SndData(4, SELECT_MODE_ICON_VP);
         }
-        RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
+        RTS_SndData(fileInfo.currentDisplayFilename, PRINT_FILE_TEXT_VP);
         RTS_SndData(ExchangePageBase + 56, ExchangepageAddr);
       }
       else if (recdat.data[0] == 2) 
@@ -2072,22 +2068,22 @@ void RTSSHOW::RTS_HandleData()
       else if(recdat.data[0] == 3)
       {
         //page left
-        ShowFilesOnCardPage(currentPage-1);
+        ShowFilesOnCardPage(fileInfo.currentPage-1);
       }
       else if(recdat.data[0] == 4)
       {
         //page right
-        ShowFilesOnCardPage(currentPage+1);
+        ShowFilesOnCardPage(fileInfo.currentPage+1);
       }
       else if ((recdat.data[0] == 11) && RTS_SD_Detected())
       {
-        if (!card.fileExists(currentFilePath)) {
+        if (!card.fileExists(fileInfo.currentFilePath)) {
           break;
         }
 
-        char cmd[30];
+        char cmd[MAX_CMD_SIZE+16];
         char *c;
-        sprintf_P(cmd, PSTR("M23 %s"), currentFilePath);
+        sprintf_P(cmd, PSTR("M23 %s"), fileInfo.currentFilePath);
         for (c = &cmd[4]; *c; c++)
           *c = tolower(*c);
 
@@ -2126,7 +2122,7 @@ void RTSSHOW::RTS_HandleData()
           RTS_SndData(0, PRINT_FILE_TEXT_VP + j);
         }
 
-        RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
+        RTS_SndData(fileInfo.currentDisplayFilename, PRINT_FILE_TEXT_VP);
 
         delay(2);
 
@@ -2327,7 +2323,7 @@ void RTSSHOW::RTS_HandleData()
         RTS_SndData(10, FILE1_SELECT_ICON_VP + j);
       }
 
-      RTS_SndData(currentDisplayFilename, PRINT_FILE_TEXT_VP);
+      RTS_SndData(fileInfo.currentDisplayFilename, PRINT_FILE_TEXT_VP);
 
       // represents to update file list
       if (CardUpdate && lcd_sd_status && IS_SD_INSERTED())

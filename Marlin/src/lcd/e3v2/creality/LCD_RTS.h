@@ -1,6 +1,7 @@
 #ifndef LCD_RTS_H
 #define LCD_RTS_H
 
+#include "../../../sd/cardreader.h"
 #include "string.h"
 #include <arduino.h>
 
@@ -162,6 +163,18 @@ typedef struct DataBuf
   unsigned char reserv[4];
 } DB;
 
+typedef struct 
+{
+  char currentDir[MAXPATHNAMELENGTH];
+  char currentFilePath[MAXPATHNAMELENGTH];
+  uint16_t fileCount;
+  uint16_t pages;
+  int pageFileIndex;
+  int currentPage;
+  char currentDisplayFilename[20];
+  bool isDir[5];
+} FileInfo;
+
 class RTSUI
 {
   public:
@@ -195,7 +208,7 @@ class RTSSHOW
     void RTS_SDcard_Stop();
     void RTS_HandleData();
     void RTS_Init();
-
+    FileInfo fileInfo;
     DB recdat;
     DB snddat;
   private:
