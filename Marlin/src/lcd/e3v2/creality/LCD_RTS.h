@@ -172,7 +172,6 @@ typedef struct
   int pageFileIndex;
   int currentPage;
   char currentDisplayFilename[20];
-  bool isDir[5];
 } FileInfo;
 
 class RTSUI
@@ -208,6 +207,8 @@ class RTSSHOW
     void RTS_SDcard_Stop();
     void RTS_HandleData();
     void RTS_Init();
+    void InitCardList();
+    void ShowFilesOnCardPage(int);
     FileInfo fileInfo;
     DB recdat;
     DB snddat;

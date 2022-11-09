@@ -70,6 +70,8 @@ bool pause_action_flag = false;
 int power_off_type_yes = 0;
 // represents to update file list
 bool CardUpdate = false;
+bool hasSelected = false;
+short previousSelectionIndex;
 
 extern CardReader card;
 // represents SD-card status, true means SD is available, false means opposite.
@@ -117,39 +119,39 @@ RTSSHOW::RTSSHOW()
   memset(databuf, 0, sizeof(databuf));
 }
 
-void ShowFilesOnCardPage(int page) {
+void RTSSHOW::ShowFilesOnCardPage(int page) {
   if (page < 1) {
     page = 1;
-  } else if (page > rtscheck.fileInfo.pages) {
-    page = rtscheck.fileInfo.pages;
+  } else if (page > fileInfo.pages) {
+    page = fileInfo.pages;
   }
 
-  rtscheck.fileInfo.currentPage = page;
+  fileInfo.currentPage = page;
 
   char pageCount[3];
   char maxPages[3];
   itoa(page, pageCount, 10);
-  itoa(rtscheck.fileInfo.pages, maxPages, 10);
+  itoa(fileInfo.pages, maxPages, 10);
   char statStr[7];
   strcpy(statStr, pageCount);
   strcat(statStr, "/");
   strcat(statStr, maxPages);
 
   for (int h = 0; h < 7; h++) {
-    rtscheck.RTS_SndData(0, PAGE_STATUS_TEXT_VP + h);
+    RTS_SndData(0, PAGE_STATUS_TEXT_VP + h);
   }
 
-  rtscheck.RTS_SndData(statStr, PAGE_STATUS_TEXT_VP);
+  RTS_SndData(statStr, PAGE_STATUS_TEXT_VP);
 
-  int max = rtscheck.fileInfo.currentPage*5;
+  int max = fileInfo.currentPage*5;
   int min = max-4;
-  if (max > rtscheck.fileInfo.fileCount) {
-    max = rtscheck.fileInfo.fileCount;
+  if (max > fileInfo.fileCount) {
+    max = fileInfo.fileCount;
   }
 
   for (int i = 0; i < 100; i += 20) {
     for (int j = 0; j < 20; j++) {
-      rtscheck.RTS_SndData(0, FILE1_TEXT_VP + i + j);
+      RTS_SndData(0, FILE1_TEXT_VP + i + j);
     }
   }
 
@@ -159,21 +161,18 @@ void ShowFilesOnCardPage(int page) {
   //enumerate files
   for (int k = min-1; k < max; k++) {
     card.selectFileByIndex(k);
-    SERIAL_ECHOLNPGM("Show on page: ", card.longest_filename());
     char shortFileName[20];
     strncpy(shortFileName, card.longest_filename(), 20);
 
-    rtscheck.RTS_SndData(shortFileName, buttonIndex);
+    RTS_SndData(shortFileName, buttonIndex);
 
     if (!EndsWith(card.longest_filename(), "gcode") && !EndsWith(card.longest_filename(), "GCO") 
         && !EndsWith(card.longest_filename(), "GCODE")) 
     {
       //change color if dir
-      rtscheck.RTS_SndData((unsigned long)0x0400, FilenameNature + (textIndex + 5) * 16);
-      rtscheck.fileInfo.isDir[textIndex] = true;
+      RTS_SndData((unsigned long)0x0400, FilenameNature + (textIndex + 5) * 16);
     } else {
-      rtscheck.RTS_SndData((unsigned long)0xA514, FilenameNature + (textIndex + 5) * 16);
-      rtscheck.fileInfo.isDir[textIndex] = false;
+      RTS_SndData((unsigned long)0xA514, FilenameNature + (textIndex + 5) * 16);
     }
 
     textIndex++;
@@ -181,30 +180,32 @@ void ShowFilesOnCardPage(int page) {
   }
 }
 
-void InitCardList() {
+void RTSSHOW::InitCardList() {
   for(int j = 0; j < MAXPATHNAMELENGTH; j++)
   {
-    rtscheck.fileInfo.currentDir[j] = 0;
+    fileInfo.currentDir[j] = 0;
   }
 
-  card.getAbsFilenameInCWD(rtscheck.fileInfo.currentDir);
+  card.getAbsFilenameInCWD(fileInfo.currentDir);
   char shortDirName[20];
   for(int j = 0; j < 20; j++)
   {
-    rtscheck.RTS_SndData(0, SELECT_FILE_TEXT_VP + j);
+    RTS_SndData(0, SELECT_FILE_TEXT_VP + j);
   }
 
-  strncpy(shortDirName, rtscheck.fileInfo.currentDir, 20);
-  rtscheck.RTS_SndData(shortDirName, SELECT_FILE_TEXT_VP);
+  hasSelected = false;
 
-  rtscheck.fileInfo.fileCount = card.get_num_Files();
-  rtscheck.fileInfo.pages = ((rtscheck.fileInfo.fileCount-1) / 5)+1;
+  strncpy(shortDirName, fileInfo.currentDir, 20);
+  RTS_SndData(shortDirName, SELECT_FILE_TEXT_VP);
+
+  fileInfo.fileCount = card.get_num_Files();
+  fileInfo.pages = ((fileInfo.fileCount-1) / 5)+1;
 
   for (uint16_t i = 0; i < 4; i++)
   {
     delay(3);
-    rtscheck.RTS_SndData((unsigned long)0xA514, FilenameNature + (i + 5) * 16);
-    rtscheck.RTS_SndData(0, FILE1_SELECT_ICON_VP + i);
+    RTS_SndData((unsigned long)0xA514, FilenameNature + (i + 5) * 16);
+    RTS_SndData(0, FILE1_SELECT_ICON_VP + i);
   }
 
   ShowFilesOnCardPage(1);
@@ -2031,10 +2032,12 @@ void RTSSHOW::RTS_HandleData()
         RTS_SndData(fileInfo.currentDisplayFilename, PRINT_FILE_TEXT_VP);
         delay(2);
 
-        for(int j = 0; j <= 4; j ++)
-        {
-            RTS_SndData((unsigned long)0xA514, FilenameNature + (j + 5) * 16);
+        if (hasSelected) {
+          RTS_SndData((unsigned long)0xA514, FilenameNature + previousSelectionIndex * 16);
         }
+
+        previousSelectionIndex = recdat.data[0];
+        hasSelected = true;
 
         RTS_SndData((unsigned long)0x073F, FilenameNature + recdat.data[0] * 16);
         RTS_SndData(1, FILE1_SELECT_ICON_VP + (recdat.data[0] - 1));
