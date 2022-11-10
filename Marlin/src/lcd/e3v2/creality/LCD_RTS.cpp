@@ -2008,7 +2008,7 @@ void RTSSHOW::RTS_HandleData()
         }
 
         card.selectFileByIndex(index);
-        strcpy(fileInfo.currentDisplayFilename, card.longest_filename());
+        strncpy(fileInfo.currentDisplayFilename, card.longest_filename(), 20);
         for (int j = 0; j < MAXPATHNAMELENGTH; j ++)
         {
           fileInfo.currentFilePath[j] = 0;
