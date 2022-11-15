@@ -298,12 +298,10 @@ const unsigned long Addrbuf[] =
 };
 
 extern int EndsWith(const char*, const char*);
-extern void SetExtruderMode(unsigned int);
+extern void SetExtruderMode(unsigned int, bool);
 extern void RTSUpdate();
 extern void RTSInit();
 
-extern uint8_t active_extruder_font;
-extern uint8_t dualXPrintingModeStatus;
 extern int Update_Time_Value;
 extern bool PoweroffContinue;
 extern bool sdcard_pause_check;

@@ -322,13 +322,8 @@ void RTSSHOW::RTS_Init()
   AxisUnitMode = 3;
   active_extruder = active_extruder_font;
   #if ENABLED(DUAL_X_CARRIAGE)
-    if (dualXPrintingModeStatus == 4) {
-      save_dual_x_carriage_mode = 5;
-    } else if (dualXPrintingModeStatus == 0) {
-      save_dual_x_carriage_mode = 4;
-    } else {
-      save_dual_x_carriage_mode = dualXPrintingModeStatus;
-    }
+    save_dual_x_carriage_mode = dualXPrintingModeStatus;
+    
     if(save_dual_x_carriage_mode == 1)
     {
       RTS_SndData(1, PRINT_MODE_ICON_VP);
@@ -837,14 +832,9 @@ void RTSSHOW::RTS_HandleData()
       else if(recdat.data[0] == 5)
       {
         #if ENABLED(DUAL_X_CARRIAGE)
-          if (dualXPrintingModeStatus == 4) {
-            save_dual_x_carriage_mode = 5;
-          } else if (dualXPrintingModeStatus == 0) {
-            save_dual_x_carriage_mode = 4;
-          } else {
-            save_dual_x_carriage_mode = dualXPrintingModeStatus;
-          }
-          SetExtruderMode(save_dual_x_carriage_mode);
+          save_dual_x_carriage_mode = dualXPrintingModeStatus;
+          
+          SetExtruderMode(save_dual_x_carriage_mode, true);
 
           RTS_SndData(ExchangePageBase + 34, ExchangepageAddr);
         #endif
@@ -911,7 +901,7 @@ void RTSSHOW::RTS_HandleData()
         RTS_SDcard_Stop();
         Update_Time_Value = 0;
         PrintFlag = 0;
-        queue.enqueue_one_P(PSTR("M77"));
+        queue.enqueue_now_P(PSTR("M77"));
         TERN_(HOST_PAUSE_M76, host_action_cancel());
       }
       else if(recdat.data[0] == 0xF0)
@@ -948,12 +938,12 @@ void RTSSHOW::RTS_HandleData()
         sdcard_pause_check = false;
         PrintFlag = 1;
         change_page_number = 12;
-        queue.enqueue_one_P(PSTR("M76"));
+        queue.enqueue_now_P(PSTR("M76"));
       }
       break;
 
     case ResumePrintKey:
-      queue.enqueue_one_P(PSTR("M117 Resuming..."));
+      queue.enqueue_now_P(PSTR("M117 Resuming..."));
       #if BOTH(M600_PURGE_MORE_RESUMABLE, ADVANCED_PAUSE_FEATURE)
         pause_menu_response = PAUSE_RESPONSE_RESUME_PRINT;  // Simulate menu selection
       #endif
@@ -968,7 +958,7 @@ void RTSSHOW::RTS_HandleData()
         pause_action_flag = false;
         RTS_SndData(ExchangePageBase + 11, ExchangepageAddr);
         PrintFlag = 2;
-        queue.enqueue_one_P(PSTR("M75"));
+        queue.enqueue_now_P(PSTR("M75"));
         TERN_(HOST_PAUSE_M76, host_action_resume());
       }
       else if(recdat.data[0] == 2)
@@ -981,7 +971,7 @@ void RTSSHOW::RTS_HandleData()
         sdcard_pause_check = true;
         PrintFlag = 2;
         RTS_SndData(ExchangePageBase + 11, ExchangepageAddr);
-        queue.enqueue_one_P(PSTR("M75"));
+        queue.enqueue_now_P(PSTR("M75"));
         TERN_(HOST_PAUSE_M76, host_action_resume());
       }
       else if(recdat.data[0] == 3)
@@ -1046,7 +1036,7 @@ void RTSSHOW::RTS_HandleData()
 
           sd_printing_autopause = true;
           RTS_SndData(ExchangePageBase + 11, ExchangepageAddr);
-          queue.enqueue_one_P(PSTR("M75"));
+          queue.enqueue_now_P(PSTR("M75"));
           TERN_(HOST_PAUSE_M76, host_action_resume());
         }
       }
@@ -1168,6 +1158,18 @@ void RTSSHOW::RTS_HandleData()
         thermalManager.temp_hotend[1].target = PREHEAT_2_TEMP_HOTEND;
         thermalManager.setTargetHotend(thermalManager.temp_hotend[1].target, 1);
         RTS_SndData(thermalManager.temp_hotend[1].target, HEAD1_SET_TEMP_VP);
+        thermalManager.temp_bed.target = PREHEAT_2_TEMP_BED;
+        thermalManager.setTargetBed(thermalManager.temp_bed.target);
+        RTS_SndData(thermalManager.temp_bed.target, BED_SET_TEMP_VP);
+      }
+      else if (recdat.data[0] == 9)
+      {
+        thermalManager.temp_bed.target = PREHEAT_1_TEMP_BED;
+        thermalManager.setTargetBed(thermalManager.temp_bed.target);
+        RTS_SndData(thermalManager.temp_bed.target, BED_SET_TEMP_VP);
+      }
+      else if (recdat.data[0] == 10)
+      {
         thermalManager.temp_bed.target = PREHEAT_2_TEMP_BED;
         thermalManager.setTargetBed(thermalManager.temp_bed.target);
         RTS_SndData(thermalManager.temp_bed.target, BED_SET_TEMP_VP);
@@ -1352,7 +1354,7 @@ void RTSSHOW::RTS_HandleData()
       if (recdat.data[0] == 1)
       {
         Update_Time_Value = RTS_UPDATE_VALUE;
-        SetExtruderMode(save_dual_x_carriage_mode);
+        SetExtruderMode(save_dual_x_carriage_mode, true);
         RTS_SndData(ExchangePageBase + 21, ExchangepageAddr);
       }
       else if (recdat.data[0] == 2)
@@ -1922,13 +1924,8 @@ void RTSSHOW::RTS_HandleData()
       if (recdat.data[0] == 1)
       {
         #if ENABLED(DUAL_X_CARRIAGE)
-          if (dualXPrintingModeStatus == 4) {
-            save_dual_x_carriage_mode = 5;
-          } else if (dualXPrintingModeStatus == 0) {
-            save_dual_x_carriage_mode = 4;
-          } else {
-            save_dual_x_carriage_mode = dualXPrintingModeStatus;
-          }
+          save_dual_x_carriage_mode = dualXPrintingModeStatus;
+          
           switch(save_dual_x_carriage_mode)
           {
             case 1:
@@ -2094,13 +2091,8 @@ void RTSSHOW::RTS_HandleData()
         memset(cmdbuf, 0, sizeof(cmdbuf));
         strcpy(cmdbuf, cmd);
 
-        if (dualXPrintingModeStatus == 4) {
-          save_dual_x_carriage_mode = 5;
-        } else if (dualXPrintingModeStatus == 0) {
-          save_dual_x_carriage_mode = 4;
-        } else {
-          save_dual_x_carriage_mode = dualXPrintingModeStatus;
-        }
+        save_dual_x_carriage_mode = dualXPrintingModeStatus;
+        
         switch(save_dual_x_carriage_mode)
         {
           case 1:
@@ -2150,7 +2142,7 @@ void RTSSHOW::RTS_HandleData()
       break;
 
     case PrintSelectModeKey:
-      SetExtruderMode(recdat.data[0]);
+      SetExtruderMode(recdat.data[0], false);
       break;
 
     case StoreMemoryKey:
@@ -2545,7 +2537,12 @@ void EachMomentUpdate()
   }
 }
 
-void SetExtruderMode(unsigned int mode) {
+void SetExtruderMode(unsigned int mode, bool isDirect) {
+  if (isDirect && mode == 4) {
+    mode = 5;
+  } else if (isDirect && mode == 0) {
+    mode = 4;
+  }
   SERIAL_ECHOLNPGM("Select new extruder mode: ", mode);
   if (mode == 1)
   {
@@ -2603,13 +2600,7 @@ void SetExtruderMode(unsigned int mode) {
     rtscheck.RTS_SndData(5, SELECT_MODE_ICON_VP);
   } else if (mode == 6)
   {
-    if (dualXPrintingModeStatus == 4) {
-      save_dual_x_carriage_mode = 5;
-    } else if (dualXPrintingModeStatus == 0) {
-      save_dual_x_carriage_mode = 4;
-    } else {
-      save_dual_x_carriage_mode = dualXPrintingModeStatus;
-    }
+    save_dual_x_carriage_mode = dualXPrintingModeStatus;
     settings.save();
     rtscheck.RTS_SndData(ExchangePageBase + 1, ExchangepageAddr);
   } else {

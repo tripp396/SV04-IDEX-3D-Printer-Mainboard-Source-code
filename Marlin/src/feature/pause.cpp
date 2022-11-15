@@ -566,7 +566,7 @@ void wait_for_confirmation(const bool is_reload/*=false*/, const int8_t max_beep
 
       TERN_(HAS_RESUME_CONTINUE, wait_for_user_response(0, true)); // Wait for LCD click or M108
 
-      queue.enqueue_one_P(PSTR("M117 Reheating..."));
+      queue.enqueue_now_P(PSTR("M117 Reheating..."));
 
       TERN_(HOST_PROMPT_SUPPORT, host_prompt_do(PROMPT_INFO, GET_TEXT(MSG_REHEATING)));
 
@@ -588,7 +588,7 @@ void wait_for_confirmation(const bool is_reload/*=false*/, const int8_t max_beep
 
       HOTEND_LOOP() thermalManager.heater_idle[e].start(nozzle_timeout);
 
-      queue.enqueue_one_P(PSTR("M117 Reheat Done."));
+      queue.enqueue_now_P(PSTR("M117 Reheat Done."));
       rtscheck.RTS_SndData(ExchangePageBase + 8, ExchangepageAddr);
       TERN_(HOST_PROMPT_SUPPORT, host_prompt_do(PROMPT_USER_CONTINUE, GET_TEXT(MSG_REHEATDONE), CONTINUE_STR));
       TERN_(EXTENSIBLE_UI, ExtUI::onUserConfirmRequired_P(GET_TEXT(MSG_REHEATDONE)));
@@ -652,7 +652,7 @@ void resume_print(const_float_t slow_load_length/*=0*/, const_float_t fast_load_
   // Load the new filament
   load_filament(slow_load_length, fast_load_length, purge_length, max_beep_count, true, nozzle_timed_out, PAUSE_MODE_SAME DXC_PASS);
 
-  queue.enqueue_one_P(PSTR("M117 Loading filament..."));
+  queue.enqueue_now_P(PSTR("M117 Loading filament..."));
 
   if (targetTemp > 0) {
     thermalManager.setTargetHotend(targetTemp, active_extruder);
